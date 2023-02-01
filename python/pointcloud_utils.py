@@ -24,7 +24,7 @@ def cloud_centroid(points):
     return (points.max(axis=0) + points.min(axis=0))/2
   
 
-def concave_hull_3d(pos, alpha=None, ratio = None):
+def concave_hull_3d(pos, alpha=None, ratio = None,alpha_scales=[1], return_vertices = False):
     #basically this tries to get all the points on the outsie surface of the pointcloud
     #edited from other code I cant find anymore using an alpha-shape algorithm
     #defaults to mean radius as alpha value because this works best based on trial and error
@@ -42,6 +42,8 @@ def concave_hull_3d(pos, alpha=None, ratio = None):
     # By definition, radius of the sphere fitting inside the tetrahedral needs 
     # to be smaller than alpha value
     # http://mathworld.wolfram.com/Circumsphere.html
+    #added stuff so if you pass mulitple alpha scale it will adjust alpha an return a list of results
+    #to save time checkig if the valeu sucks
     tetrapos = np.take(pos,tetra.vertices,axis=0)
     normsq = np.sum(tetrapos**2,axis=2)[:,:,None]
     ones = np.ones((tetrapos.shape[0],tetrapos.shape[1],1))
@@ -58,24 +60,35 @@ def concave_hull_3d(pos, alpha=None, ratio = None):
             alpha = np.quantile(r,[ratio]) 
         else:
             alpha = np.mean(r)
-    tetras = tetra.vertices[r<alpha,:]
-    # triangles
-    TriComb = np.array([(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)])
-    Triangles = tetras[:,TriComb].reshape(-1,3)
-    Triangles = np.sort(Triangles,axis=1)
-    # Remove triangles that occurs twice, because they are within shapes
-    TrianglesDict = defaultdict(int)
-    for tri in Triangles:
-        TrianglesDict[tuple(tri)] += 1
-    Triangles=np.array([tri for tri in TrianglesDict if TrianglesDict[tri] ==1])
-    #edges
-    EdgeComb=np.array([(0, 1), (0, 2), (1, 2)])
-    Edges=Triangles[:,EdgeComb].reshape(-1,2)
-    Edges=np.sort(Edges,axis=1)
-    Edges=np.unique(Edges,axis=0)
+            
+    def get_verts(threshold):
+        tetras = tetra.vertices[r<threshold,:]
+        # triangles
+        TriComb = np.array([(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)])
+        Triangles = tetras[:,TriComb].reshape(-1,3)
+        Triangles = np.sort(Triangles,axis=1)
+        # Remove triangles that occurs twice, because they are within shapes
+        TrianglesDict = defaultdict(int)
+        for tri in Triangles:
+            TrianglesDict[tuple(tri)] += 1
+        Triangles=np.array([tri for tri in TrianglesDict if TrianglesDict[tri] ==1])
+        #edges
+        EdgeComb=np.array([(0, 1), (0, 2), (1, 2)])
+        Edges=Triangles[:,EdgeComb].reshape(-1,2)
+        Edges=np.sort(Edges,axis=1)
+        Edges=np.unique(Edges,axis=0)
 
-    Vertices = np.unique(Edges)
-    return pos[Vertices]#,Edges,Triangles
+        Vertices = np.unique(Edges)
+        return Vertices
+    
+    verts = [get_verts(alpha*ascale) for ascale in alpha_scales]
+    points = [pos[v] for v in verts]
+    if len(verts) == [0]:
+        verts = verts[0]
+        points = points[0]
+    if return_vertices:
+        return verts
+    return points#,Edges,Triangles
 
 def pcloud_to_concave_hull(roi_clouds,**kwargs):
     #wrapper for taking a dict of {roi: pointcloud} and returning {roi: pointcloud_concave_hull}
