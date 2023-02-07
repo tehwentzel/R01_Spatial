@@ -6,6 +6,7 @@ class Const():
     
     dicom_dir = data_dir + '/DICOM/'
     dicom_test_dir = data_dir + '/SMART/'
+    pointcloud_dir = data_dir + 'PatientPointClouds/'
     
     organ_list = [
         'Esophagus',#
