@@ -1,15 +1,11 @@
 {
   "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@react-three/fiber": "^8.10.0",
-    "@types/three": "^0.148.0",
-    "axios": "^1.2.3",
-    "d3-react": "^1.0.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-scripts": "0.9.5",
-    "three": "^0.148.0"
-  }
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
 }
