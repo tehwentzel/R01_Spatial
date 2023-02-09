@@ -22,7 +22,7 @@ function App() {
 
   const [patientClouds, setPatientClouds] = useState(null);
   const [patientDicoms, setPatientDicoms] = useState(null);
-  const [selectedCloudIds, setSelectedCloudIds] = useState([1,3,5]);
+  const [selectedCloudIds, setSelectedCloudIds] = useState([1,5]);
 
   const fetchDetails = async () => {
     const params = await api.getDetails();

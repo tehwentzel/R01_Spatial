@@ -75,6 +75,22 @@ export default class Utils {
         }
     }
 
+    static mode(arr){
+        var counts = {}
+        var maxNum = arr[0];
+        arr.forEach(e => {
+            if(counts[e] === undefined){
+                counts[e] = 0;
+            } else{ 
+                counts[e] += 1;
+            }
+            if(counts[e] > counts[maxNum]){
+                maxNum = e;
+            }
+        });
+        return maxNum;
+    }
+
     static numberWithCommas(x){
 
         //from https://stackoverflow.com/a/2901298

@@ -20,12 +20,14 @@ function unravelDict(roiDict){
 }
 
 function roiCentroid(roiDict,targetRoi){
+    //technically this is actually the mode now
+    //want to get the level with the most points
     if(roiDict[targetRoi] === undefined | roiDict[targetRoi].length < 3){
         console.log('missing roi entry in roiCentroid',targetRoi,Object.keys(roiDict));
         return {'x':0,'y':0,'z':0}
     }
     const points = roiDict[targetRoi];
-    let centroid = [0,1,2].map(i => Utils.median(points.map(d=>d[i])));
+    let centroid = [0,1,2].map(i => Utils.mode(points.map(d=>d[i])));
     centroid = {'x': centroid[0], 'y': centroid[1], 'z': centroid[2]};
     return centroid
 }
@@ -38,9 +40,9 @@ export default function DicomSliceViewer(props){
     const padding = 10;
 
     const cornerTextOptions = {
-        'x': 'Left',
-        'z': 'S',
-        'y': 'A'
+        'x': 'Side(L)',
+        'z': 'Top(S)',
+        'y': 'Front(A)'
     }
 
     useEffect(()=>{
@@ -50,9 +52,9 @@ export default function DicomSliceViewer(props){
             const pointValues = unravelDict(props.pCloudData['contour_values']);
             const pId = props['id'];
             
-            const centroidOffset = props.brushHeight? props.brushHeight:0;
             const brushedOrgan = props.brushedOrgan? props.brushedOrgan: 'GTVp';
             const crossSectionAxis = props.crossSectionAxis? props.crossSectionAxis:'z';
+            const centroidOffset = props.brushHeight[crossSectionAxis] | 0;
 
             const centroid = roiCentroid(props.pCloudData['contours'],brushedOrgan);
             const pointGood = point => {
@@ -87,7 +89,12 @@ export default function DicomSliceViewer(props){
             const [xMin,xMax] = d3.extent(filteredPoints, getX);
             const [yMin, yMax] = d3.extent(filteredPoints, getY);
             const [minVal,maxVal] = d3.extent(filteredPoints, p => p.value);
-            const pointRadius = Math.max(height,width)/300;
+
+            //if there are < 2000 points double the size?
+            const xAspect = (width - 2*padding)/(xMax - xMin);
+            const yAspect = (height - 2*padding)/(yMax - yMin);
+            const pointRadius = .9*Math.min(xAspect, yAspect)
+            // const pointRadius = ratio*((crossSectionAxis !== 'z') + 1)*Math.max(height,width)/300;
             const xScale = d3.scaleLinear()
                 .domain([xMin, xMax])
                 .range([padding, width-padding]);
@@ -103,6 +110,7 @@ export default function DicomSliceViewer(props){
                 let v = colorScale(d.value);
                 return interp(v);
             }
+            const getOpacity = d => d.roi === props.brushedOrgan? 1:.2;
             svg.selectAll('.pixel').remove();
             svg.selectAll('circle').filter('.pixel')
                 .data(filteredPoints).enter()
@@ -111,6 +119,7 @@ export default function DicomSliceViewer(props){
                 .attr('cy', d => yScale(getY(d)))
                 .attr('r',pointRadius)
                 .attr('fill',getColor)
+                .attr('opacity',getOpacity)
                 .on('click',(e,d)=>{
                     const roi = d.roi;
                     if(roi !== undefined & roi !== brushedOrgan){
@@ -125,15 +134,17 @@ export default function DicomSliceViewer(props){
                 });
 
             svg.selectAll('text').remove();
-            let cornerText = brushedOrgan + '-' + cornerTextOptions[crossSectionAxis];
+            let cornerText = Utils.getVarDisplayName(brushedOrgan) + '-' + cornerTextOptions[crossSectionAxis];
+            cornerText += ' | Offset = ' + centroidOffset.toFixed(2) + 'mm';
             svg.append('text')
                 .attr('class','legendText')
-                .attr('x', width - padding)
+                .attr('x', padding)
                 .attr('y', height - 5)
-                .attr('text-anchor','end')
+                .attr('text-anchor','start')
                 .html(cornerText);
+
         }
-    },[height,width,props.pCloudData,props.brushHeight,props.brushedOrgan,props.crossSectionAxis]);
+    },[height,width,props.pCloudData,props.brushHeight[props.crossSectionAxis],props.brushedOrgan,props.crossSectionAxis]);
 
     return (
         <div

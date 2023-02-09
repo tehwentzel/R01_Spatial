@@ -4,7 +4,9 @@ import * as THREE from "three";
 import DicomPointCloudViz from './DicomPointCloudViz.js';
 import DicomSliceViewer from './DicomSliceViewer.js';
 import OrganGraphD3 from './OrganGraphD3.js';
-import {Wrap, WrapItem, Center, Spinner, VStack, Box} from '@chakra-ui/react';
+import SpatialDoseGlyph from './SpatialDoseGlyph.js'
+import {Wrap, WrapItem, Center, Spinner, VStack, Box, Button, ButtonGroup,Divider} from '@chakra-ui/react';
+
 
 function getMaterialArray(renderer){
     const textureLoader = new THREE.TextureLoader();
@@ -37,9 +39,8 @@ export default function DicomViewerContainer(props){
     const [renderer, setRenderer] = useState();
     const [mainCamera, setMainCamera] = useState();
 
-    const [brushHeight,setBrushHeight] = useState(0);
+    const [brushHeight,setBrushHeight] = useState({'x': 0.0, 'y': 0.0, 'z': 0.0});
     const [brushedOrgan, setBrushedOrgan] = useState('GTVp');
-    const [crossSectionAxis,setCrossSectionAxis] = useState('z');
     const crossSectionEpsilon = .5;
 
     function changeBrushHeight(direction){
@@ -47,18 +48,6 @@ export default function DicomViewerContainer(props){
         setBrushHeight(newHeight);
     }
     
-
-    function handleKeyPress(event){
-        // event.stopPropagation();
-        //38 => up arrow, 40 = downarrow, 37 = left, 39 = right
-        console.log('keyup', event.key,event.keyCode);
-        if(event.key === 'ArrowUp'){
-            changeBrushHeight(1);
-        } else if(event.key === 'ArrowDown'){
-            changeBrushHeight(-1);
-        }
-    }
-
 
     useEffect(() => {
         if(!canvasRef.current){ return; }
@@ -75,6 +64,38 @@ export default function DicomViewerContainer(props){
         setRenderer(r);
     },[canvasRef.current]);
 
+    const makeBrushToggleButton = (axis) => {
+        const increment = (direction) => {
+            let newBrush = Object.assign({},brushHeight);
+            newBrush[axis] = newBrush[axis] + (direction)*crossSectionEpsilon;
+            console.log('new brush height',newBrush[axis],brushHeight[axis],axis)
+            setBrushHeight(newBrush)
+        };
+
+        return (
+            <ButtonGroup isAttached size='sm' gap='0' width='auto' margin='.1em'>
+                <Button
+                    width='auto'
+                    height='100%'
+                    colorScheme='teal'
+                    onClick={() => increment(.5)}
+                >{'+'}</Button>
+                <Button
+                    width='auto'
+                    height='100%'
+                    colorScheme='blue'
+                >
+                    {axis + '-offset'}
+                </Button>
+                <Button
+                    width='auto'
+                    height='100%'
+                    colorScheme='teal'
+                    onClick={() => increment(-.5)}
+                >{'-'}</Button>
+            </ButtonGroup>
+        )
+    }
     useEffect(()=>{
         if(pCloudData === null){
             setPointCloudElements(
@@ -85,12 +106,19 @@ export default function DicomViewerContainer(props){
 
         }
         else{
-            // console.log(brushHeight)
             let pCloudEntries = pCloudData.map((d,i)=> {
                 return (
                 <WrapItem key={'dicomview'+i} className={'shadow'}>
-                    <Box onKeyDown={handleKeyPress}>
-                        <Center w='25vw' h='25vw'>
+                    <Box>
+                        <VStack w='25vw' h ='25vw' className={'lightGutter shadow'}>
+                        <Center w='25vw' h='1vw'>
+                            {'Patient: ' + d.id}
+                            {makeBrushToggleButton('x')}
+                            {makeBrushToggleButton('y')}
+                            {makeBrushToggleButton('z')}
+                        </Center>
+                        <Divider></Divider>
+                        <Center w='25vw' h='24vw'>
                         <DicomPointCloudViz
                             data={d}
                             renderer={renderer}
@@ -103,10 +131,11 @@ export default function DicomViewerContainer(props){
                             setBrushedOrgan={setBrushedOrgan}
                         ></DicomPointCloudViz>
                         </Center>
+                        </VStack>
                     </Box>
-                    <Box onKeyDown={handleKeyPress}>
+                    <Box>
                         <VStack w='15vw' h='25vw'>
-                        <Center w='15vw' h = '12vw'>
+                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
                         <DicomSliceViewer
                             pCloudData={d}
                             raycaster={raycaster}
@@ -119,7 +148,7 @@ export default function DicomViewerContainer(props){
                             crossSectionAxis={'z'}
                         ></DicomSliceViewer>
                         </Center>
-                        <Center w='15vw' h = '12vw'>
+                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
                         <DicomSliceViewer
                             pCloudData={d}
                             raycaster={raycaster}
@@ -135,14 +164,35 @@ export default function DicomViewerContainer(props){
                         </VStack>
                     </Box>
                     <Box>
-                        <Center h='25vw' w='25vw'>
-                            <OrganGraphD3
+                    <VStack w='15vw' h='25vw'>
+                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
+                        <DicomSliceViewer
+                            pCloudData={d}
+                            raycaster={raycaster}
+                            brushHeight={brushHeight}
+                            setBrushHeight={setBrushHeight}
+                            epsilon={crossSectionEpsilon}
+                            changeBrushHeight={changeBrushHeight}
+                            brushedOrgan={brushedOrgan}
+                            setBrushedOrgan={setBrushedOrgan}
+                            crossSectionAxis={'y'}
+                        ></DicomSliceViewer>
+                        </Center>
+                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
+                            {/* <OrganGraphD3
+                                data={d}
+                                parameters={props.parameters}
+                                brushedOrgan={brushedOrgan}
+                                setBrushedOrgan={setBrushedOrgan}
+                            /> */}
+                            <SpatialDoseGlyph
                                 data={d}
                                 parameters={props.parameters}
                                 brushedOrgan={brushedOrgan}
                                 setBrushedOrgan={setBrushedOrgan}
                             />
                         </Center>
+                        </VStack>
                     </Box>
                 </WrapItem>
                 )
@@ -153,10 +203,10 @@ export default function DicomViewerContainer(props){
                 </Wrap>
             );
         }
-    },[pCloudData,pIds,brushHeight,crossSectionAxis,brushedOrgan,mainCamera])
+    },[pCloudData,pIds,brushHeight,brushedOrgan,mainCamera])
 
     return <div style={{'height':'auto','overflowY':'visible','width':'100%'}}
-        onKeyDown={handleKeyPress}
+        // onKeyDown={handleKeyPress}
         tabIndex="0"
     >
         {pointCloudElements}

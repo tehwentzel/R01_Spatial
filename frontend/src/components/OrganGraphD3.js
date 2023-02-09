@@ -22,6 +22,7 @@ export default function OrganGraphD3(props){
     const [roiValues, setRoiValues] = useState({});
     const radius = 10;
     const padding = 4*radius;
+    const minDist = 10;//minimum distance to show the links
 
     useEffect(()=>{
         if(height > 0 & width > 0 & Utils.validData(props.data) & Utils.validData(props.parameters)){
@@ -56,6 +57,8 @@ export default function OrganGraphD3(props){
                 .range([height-padding,padding]);
 
             const dists = props.data.distances[rPos];
+
+
             const volumes = props.data.Volumes;
             const maxVolume = d3.max(volumes);
             const nodes = centroids.map(d => {
@@ -73,8 +76,24 @@ export default function OrganGraphD3(props){
             });
 
             
-            var links = roiList.map((d,i) => {return {source: centerRoi, target: d}})
+            var links = roiList.map((d,i) => {return {source: centerRoi, target: d,distance: dists[i]}})
                 .filter(d=> d.source !== d.target);
+
+
+            var showLinks = links.filter(d => d.distance < minDist);
+            const dScale = d3.scalePow(.5)
+                .domain(d3.extent(showLinks,d=>d.distance))
+                .range([1,.1]);
+            const getStroke = d => 3*dScale(d.distance)
+            svg.selectAll('path').filter('.linkLine').remove();
+            var lines = svg.selectAll('path')
+                .filter('.linkLine')
+                .data(showLinks)
+                .enter().append('path')
+                .attr('class','linkLine')
+                .attr('fill','none')
+                .attr('stroke-width',getStroke)
+                .attr('stroke','black');
 
             const active = d => d.id === centerRoi;
             const getRadius = (d) =>{
@@ -113,23 +132,28 @@ export default function OrganGraphD3(props){
                     Utils.moveTTipEvent(tTip,e);
                 }).on('mouseout', function(e){
                     Utils.hideTTip(tTip);
-                });;
+                });
+
 
             var forceLink = d3.forceLink()
                 .id(d=>d.id)
                 .distance((d,i)=>3*dists[i])
-                .strength(1)
+                .strength(.5)
                 .links(links);
 
+            const lineFunc = d3.line();
+            const linkArc = d => lineFunc([[d.source.x,d.source.y],[d.target.x,d.target.y]]);
+
             function ticked() {
+                svg.selectAll('path').filter('.linkLine').attr('d',linkArc);
                 svg.selectAll('circle').attr('cx',d=>d.x).attr('cy',d=>d.y);
             }
-            const fStrength = .75;
+            const fStrength = 1;
             var simulation = d3.forceSimulation(nodes)
                 .force('link',forceLink)
                 .force('x',d3.forceX(d=>d.baseX).strength(fStrength))
                 .force('y',d3.forceY(d=>d.baseY).strength(fStrength))
-                .force('collide',d3.forceCollide().radius(getRadius).strength(.1))
+                .force('collide',d3.forceCollide().radius(getRadius).strength(1))
                 .force('center',d3.forceCenter(width/2,height/2).strength(.1))
                 .on('tick',ticked);
             
