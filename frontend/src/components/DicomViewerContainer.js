@@ -5,6 +5,7 @@ import DicomPointCloudViz from './DicomPointCloudViz.js';
 import DicomSliceViewer from './DicomSliceViewer.js';
 import OrganGraphD3 from './OrganGraphD3.js';
 import SpatialDoseGlyph from './SpatialDoseGlyph.js'
+import Utils from '../modules/Utils.js';
 import {Wrap, WrapItem, Center, Spinner, VStack, Box, Button, ButtonGroup,Divider} from '@chakra-ui/react';
 
 
@@ -83,9 +84,9 @@ export default function DicomViewerContainer(props){
                 <Button
                     width='auto'
                     height='100%'
-                    colorScheme='blue'
+                    colorScheme='teal'
                 >
-                    {axis + '-offset'}
+                    {axis + '-offset: ' + brushHeight[axis]}
                 </Button>
                 <Button
                     width='auto'
@@ -96,6 +97,7 @@ export default function DicomViewerContainer(props){
             </ButtonGroup>
         )
     }
+
     useEffect(()=>{
         if(pCloudData === null){
             setPointCloudElements(
@@ -106,6 +108,30 @@ export default function DicomViewerContainer(props){
 
         }
         else{
+            const makeSliceViewer = (d,axis) => {
+                return (
+                    <VStack w='15vw' h='12vw' className={'lightGutter shadow'}>
+                        <Center w='15vw' h='11vw'>
+                            <DicomSliceViewer
+                                pCloudData={d}
+                                raycaster={raycaster}
+                                brushHeight={brushHeight}
+                                setBrushHeight={setBrushHeight}
+                                epsilon={crossSectionEpsilon}
+                                changeBrushHeight={changeBrushHeight}
+                                brushedOrgan={brushedOrgan}
+                                setBrushedOrgan={setBrushedOrgan}
+                                crossSectionAxis={axis}
+                            ></DicomSliceViewer>
+                        </Center>
+                        <Divider/>
+                        <Center w='15vw'  h='1vw'>
+                            {Utils.getVarDisplayName(brushedOrgan) + ' slice (' + axis + ') '}
+                            {makeBrushToggleButton(axis)}
+                        </Center>
+                    </VStack>
+                )
+            }
             let pCloudEntries = pCloudData.map((d,i)=> {
                 return (
                 <WrapItem key={'dicomview'+i} className={'shadow'}>
@@ -113,9 +139,6 @@ export default function DicomViewerContainer(props){
                         <VStack w='25vw' h ='25vw' className={'lightGutter shadow'}>
                         <Center w='25vw' h='1vw'>
                             {'Patient: ' + d.id}
-                            {makeBrushToggleButton('x')}
-                            {makeBrushToggleButton('y')}
-                            {makeBrushToggleButton('z')}
                         </Center>
                         <Divider></Divider>
                         <Center w='25vw' h='24vw'>
@@ -135,49 +158,13 @@ export default function DicomViewerContainer(props){
                     </Box>
                     <Box>
                         <VStack w='15vw' h='25vw'>
-                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
-                        <DicomSliceViewer
-                            pCloudData={d}
-                            raycaster={raycaster}
-                            brushHeight={brushHeight}
-                            setBrushHeight={setBrushHeight}
-                            epsilon={crossSectionEpsilon}
-                            changeBrushHeight={changeBrushHeight}
-                            brushedOrgan={brushedOrgan}
-                            setBrushedOrgan={setBrushedOrgan}
-                            crossSectionAxis={'z'}
-                        ></DicomSliceViewer>
-                        </Center>
-                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
-                        <DicomSliceViewer
-                            pCloudData={d}
-                            raycaster={raycaster}
-                            brushHeight={brushHeight}
-                            setBrushHeight={setBrushHeight}
-                            epsilon={2*crossSectionEpsilon}
-                            changeBrushHeight={changeBrushHeight}
-                            brushedOrgan={brushedOrgan}
-                            setBrushedOrgan={setBrushedOrgan}
-                            crossSectionAxis={'x'}
-                        ></DicomSliceViewer>
-                        </Center>
+                        {makeSliceViewer(d,'z')}
+                        {makeSliceViewer(d,'x')}
                         </VStack>
                     </Box>
                     <Box>
                     <VStack w='15vw' h='25vw'>
-                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
-                        <DicomSliceViewer
-                            pCloudData={d}
-                            raycaster={raycaster}
-                            brushHeight={brushHeight}
-                            setBrushHeight={setBrushHeight}
-                            epsilon={crossSectionEpsilon}
-                            changeBrushHeight={changeBrushHeight}
-                            brushedOrgan={brushedOrgan}
-                            setBrushedOrgan={setBrushedOrgan}
-                            crossSectionAxis={'y'}
-                        ></DicomSliceViewer>
-                        </Center>
+                        {makeSliceViewer(d,'y')}
                         <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
                             {/* <OrganGraphD3
                                 data={d}
