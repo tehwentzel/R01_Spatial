@@ -182,19 +182,42 @@ def add_images_to_dictionary(images_dictionary, dicom_names, sitk_dicom_reader,
                      'Pixel_Spacing_Y': pixel_spacing_y, 'Slice_Thickness': slice_thickness}
         images_dictionary[series_instance_uid] = temp_dict
 
+def get_refed_structure_uid(ds):
+    try:
+        uid = ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
+        return uid
+    except:
+        return 'missing'
+    
+def get_refed_dose_uid(ds):
+    try:
+        uid = ds.DoseReferenceSequence[0].DoseReferenceUID
+        return uid
+    except:
+        return 'missing'
 
+def get_study_description(ds):
+    try:
+        return ds.StudyDescription
+    except:
+        return ''
+    
 def add_rp_to_dictionary(ds, path: typing.Union[str, bytes, os.PathLike], rp_dictionary):
     try:
         series_instance_uid = ds.SeriesInstanceUID
         if series_instance_uid not in rp_dictionary:
-            refed_structure_uid = ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
-            refed_dose_uid = ds.DoseReferenceSequence[0].DoseReferenceUID
-            temp_dict = {'Path': path, 'SOPInstanceUID': ds.SOPInstanceUID,
+            
+            refed_structure_uid = get_refed_structure_uid(ds)
+            refed_dose_uid = get_refed_dose_uid(ds)
+            temp_dict = {'Path': path, 
+                         'SOPInstanceUID': ds.SOPInstanceUID,
                          'ReferencedStructureSetSOPInstanceUID': refed_structure_uid,
-                         'ReferencedDoseSOPUID': refed_dose_uid, 'Description': ds.StudyDescription}
+                         'ReferencedDoseSOPUID': refed_dose_uid, 
+                         'Description': get_study_description(ds)}
             rp_dictionary[series_instance_uid] = temp_dict
-    except:
-        print("Had an error loading " + path)
+    except Exception as e:
+        print("Had an error loading " + path,'in add_rp_to_dictionary')
+        print(e)
 
 
 def add_rt_to_dictionary(ds, path: typing.Union[str, bytes, os.PathLike], rt_dictionary):
@@ -224,8 +247,9 @@ def add_rt_to_dictionary(ds, path: typing.Union[str, bytes, os.PathLike], rt_dic
                                      'SeriesInstanceUID': refed_series_instance_uid, 'Plans': {}, 'Doses': {},
                                      'SOPInstanceUID': sop_instance_uid}
                         rt_dictionary[series_instance_uid] = temp_dict
-    except:
-        print("Had an error loading " + path)
+    except Exception as e:
+        print("Had an error loading " + path,'in add_rt_to_dictionary')
+        print(e)
 
 
 def add_rd_to_dictionary(sitk_dicom_reader, rd_dictionary):
@@ -236,7 +260,7 @@ def add_rd_to_dictionary(sitk_dicom_reader, rd_dictionary):
     try:
         ds = pydicom.read_file(sitk_dicom_reader.GetFileName())
         series_instance_uid = sitk_dicom_reader.GetMetaData("0020|000e")
-        rt_sopinstance_uid = ds.ReferencedStructureSetSequence[0].ReferencedSOPInstanceUID
+        rt_sopinstance_uid = get_refed_structure_uid(ds)
         rp_sopinstance_uid = ds.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
         if series_instance_uid not in rd_dictionary:
             study_instance_uid = sitk_dicom_reader.GetMetaData("0020|000d")
@@ -245,11 +269,13 @@ def add_rd_to_dictionary(sitk_dicom_reader, rd_dictionary):
                 description = sitk_dicom_reader.GetMetaData("0008|103e")
             temp_dict = {'Path': sitk_dicom_reader.GetFileName(), 'StudyInstanceUID': study_instance_uid,
                          'SOPInstanceUID': sitk_dicom_reader.GetMetaData("0008|0018"),
-                         'Description': description, 'ReferencedStructureSetSOPInstanceUID': rt_sopinstance_uid,
+                         'Description': description, 
+                         'ReferencedStructureSetSOPInstanceUID': rt_sopinstance_uid,
                          'ReferencedPlanSOPInstanceUID': rp_sopinstance_uid}
             rd_dictionary[series_instance_uid] = temp_dict
-    except:
+    except Exception as e:
         print("Had an error loading " + sitk_dicom_reader.GetFileName())
+        print(e)
 
 
 def add_sops_to_dictionary(sitk_dicom_reader, series_instances_dictionary):
@@ -325,7 +351,7 @@ class AddDicomToDictionary(object):
 class DicomReaderWriter(object):
     def __init__(self, description='', Contour_Names=None, associations=None, arg_max=True, verbose=True,
                  create_new_RT=True, template_dir=None, delete_previous_rois=True,
-                 require_all_contours=True, iteration=0, get_dose_output=False,
+                 require_all_contours=False, iteration=0, get_dose_output=True,
                  flip_axes=(False, False, False), index=0, series_instances_dictionary=None):
         """
         :param description: string, description information to add to .nii files
@@ -1057,14 +1083,17 @@ class DicomReaderWriter(object):
         self.annotation_handle.SetDirection(self.dicom_handle.GetDirection())
         return None
 
-    def reshape_contour_data(self, as_array: np.array):
-        as_array = np.asarray(as_array)
+    def reshape_contour_data(self, array: np.array):
+        as_array = np.asarray(array)
+        #so if there is one point this crashes so I just return empty otherwise it throughs an error
+        if as_array.ravel().shape[0] < 4:
+            return []
         if as_array.shape[-1] != 3:
             as_array = np.reshape(as_array, [as_array.shape[0] // 3, 3])
         matrix_points = np.asarray([self.dicom_handle.TransformPhysicalPointToIndex(as_array[i])
                                     for i in range(as_array.shape[0])])
         return matrix_points
-
+        
     def return_mask(self, mask: np.array, matrix_points: np.array, geometric_type: str):
         col_val = matrix_points[:, 0]
         row_val = matrix_points[:, 1]
@@ -1124,11 +1153,15 @@ class DicomReaderWriter(object):
 
     def contours_to_mask(self, index: int):
         mask = np.zeros([self.dicom_handle.GetSize()[-1], self.image_size_rows, self.image_size_cols], dtype='int8')
-        Contour_data = self.RS_struct.ROIContourSequence[index].ContourSequence
-        for i in range(len(Contour_data)):
-            matrix_points = self.reshape_contour_data(Contour_data[i].ContourData[:])
-            mask = self.return_mask(mask, matrix_points, geometric_type=Contour_data[i].ContourGeometricType)
-        mask = mask % 2
+        try:
+            Contour_data = self.RS_struct.ROIContourSequence[index].ContourSequence
+            for i in range(len(Contour_data)):
+                matrix_points = self.reshape_contour_data(Contour_data[i].ContourData[:])
+                if len(matrix_points) > 0:
+                    mask = self.return_mask(mask, matrix_points, geometric_type=Contour_data[i].ContourGeometricType)
+            mask = mask % 2
+        except Exception as e:
+            print('error in contours_to_mask',e)#,self.RS_struct.ROIContourSequence[index])
         return mask
 
     def use_template(self) -> None:
