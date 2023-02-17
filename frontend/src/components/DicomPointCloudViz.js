@@ -44,16 +44,16 @@ export default function DicomPointCloudViz(props){
     const cameraSyncInterval = 50;
     const sceneScale = 2.5;
 
+    const skipRois = ['ctv','ptv'];
     const brushedOpacity = 1;
-    const unbrushedOpacity = .5;
+    const unbrushedOpacity = .25;
 
     const nodeSize = 15;
     const nodeColor = new THREE.Color().setHex(0xa0a0a0);
     
     const getCenter = v => (v[1] + v[0])/2;
     function makeCentroid(roi, roiPoints){
-
-        let centroid = [0,1,2].map(i => 2*Utils.median(roiPoints.map(d=>d[i])));
+        let centroid = [0,1,2].map(i => 2*Utils.midpoint(roiPoints.map(d=>d[i])));
         centroid = new THREE.Vector3(...centroid);
         var material = new THREE.MeshBasicMaterial({color:nodeColor,opacity:.5,transparent:true});
         var geo = new THREE.SphereGeometry(nodeSize,16);
@@ -70,10 +70,18 @@ export default function DicomPointCloudViz(props){
 
     function getPointGeom(data){
         // if(!Utils.validData(data)){return false}
-        
-        const pointPositions = data['contours'];
-        const pointValues = data['contour_values'];
-        const pId = props['id'];
+        const pointClouds = data['point_clouds'];
+        const correctPoint = (p) => [0,1,2].map(i => p[i] - props.centroid[i]);
+        var pointPositions = {};
+        var pointValues = {}; 
+        const pId = data['patient_id'];
+        for(const [roi,entry] of Object.entries(pointClouds)){
+            if(skipRois.indexOf(roi) > -1){continue}
+            // let points = {roi: entry['coordinates']};
+            // let dose_values = {roi: entry['dose_values']};
+            pointPositions[roi] =  entry['coordinates'];
+            pointValues[roi] = entry['dose_values'];
+        }
 
         var verts = [];
         var rois = [];
@@ -86,10 +94,10 @@ export default function DicomPointCloudViz(props){
             centroids.push(centroidMesh);
             const roiPointVals = pointValues[key];
             for(let i in roiPoints){
-                let coord = roiPoints[i];
+                let coord = correctPoint(roiPoints[i]);
                 let val = roiPointVals[i];
                 if(coord.length == 3){
-                    verts.push(...coord.map(d=>2*d));
+                    verts.push(...coord);
                     rois.push(key);
                     vals.push(val);
                 }else{
@@ -104,10 +112,10 @@ export default function DicomPointCloudViz(props){
         for(let i in vals){
             let val = vals[i];
             let roi = rois[i];
-            let interp = roi.includes("GTV")? d3.interpolateReds:d3.interpolatePuBu;
+            let interp = Utils.getRoiInterpolator(roi);
             let c = interp(colorScale(val));
             c  = d3.color(c);
-            let alpha = (roi === props.brushedOrgan)? brushedOpacity:unbrushedOpacity;
+            let alpha = ((roi === props.brushedOrgan) | roi.includes('gtv'))? brushedOpacity:unbrushedOpacity;
             c = [c.r/255, c.g/255, c.b/255, alpha];
             colors.push(...c);
         }
@@ -119,7 +127,7 @@ export default function DicomPointCloudViz(props){
         var geometry = new THREE.BufferGeometry();
         geometry.setAttribute( 'position', verts);
         geometry.setAttribute( 'color', colors);
-        var material = new THREE.PointsMaterial({vertexColors: true,size: 2,transparent:true});
+        var material = new THREE.PointsMaterial({vertexColors: true,size: 2,sizeAttenuation: true, transparent:true});
         var pointCloud = new THREE.Points(geometry,material);
         pointCloud.userData.type = 'pointcloud';
         // for(let centroidMesh of centroids){

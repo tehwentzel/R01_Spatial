@@ -27,6 +27,24 @@ function getMaterialArray(renderer){
     return materialArray;
 }
 
+function pointCloudCenter(pEntry){
+    let pClouds = pEntry['point_clouds'];
+    let points = [];
+    //if I have too many points it crashes so skip these big middle ones
+    const skipRois = ['gtv','gtvn','ctv','ptv','tongue','larynx','ipc','spc','mpc'];
+    for(let [roi,entry] of Object.entries(pClouds)){
+        if(skipRois.indexOf(roi) > -1){continue}
+        points.push(...entry['coordinates']);
+        //I think this is as high as it goes
+        if(points.length > 89000){ break; }
+    }
+    let centroid = [];
+    for(let i of [0,1,2]){
+        centroid[i] = Utils.midpoint(points.map(d=>d[i]));
+    }
+    return centroid
+}
+
 export default function DicomViewerContainer(props){
 
     const pIds = props.selectedCloudIds;
@@ -41,11 +59,13 @@ export default function DicomViewerContainer(props){
     const [mainCamera, setMainCamera] = useState();
 
     const [brushHeight,setBrushHeight] = useState({'x': 0.0, 'y': 0.0, 'z': 0.0});
-    const [brushedOrgan, setBrushedOrgan] = useState('GTVp');
-    const crossSectionEpsilon = .5;
+    const [brushedOrgan, setBrushedOrgan] = useState('gtv');
+    const crossSectionEpsilonXY = 2;
+    const crossSectionEpsilonZ = 1;
+    const offsetScale = .2;
 
     function changeBrushHeight(direction){
-        let newHeight = brushHeight + (2*crossSectionEpsilon*direction);
+        let newHeight = brushHeight + (2*crossSectionEpsilonXY*direction);
         setBrushHeight(newHeight);
     }
     
@@ -68,8 +88,7 @@ export default function DicomViewerContainer(props){
     const makeBrushToggleButton = (axis) => {
         const increment = (direction) => {
             let newBrush = Object.assign({},brushHeight);
-            newBrush[axis] = newBrush[axis] + (direction)*crossSectionEpsilon;
-            console.log('new brush height',newBrush[axis],brushHeight[axis],axis)
+            newBrush[axis] = newBrush[axis] + (direction);
             setBrushHeight(newBrush)
         };
 
@@ -79,20 +98,20 @@ export default function DicomViewerContainer(props){
                     width='auto'
                     height='100%'
                     colorScheme='teal'
-                    onClick={() => increment(.5)}
+                    onClick={() => increment(1)}
                 >{'+'}</Button>
                 <Button
                     width='auto'
                     height='100%'
                     colorScheme='teal'
                 >
-                    {axis + '-offset: ' + brushHeight[axis]}
+                    {axis + '-offset: ' + (offsetScale*brushHeight[axis]).toFixed(1)}
                 </Button>
                 <Button
                     width='auto'
                     height='100%'
                     colorScheme='teal'
-                    onClick={() => increment(-.5)}
+                    onClick={() => increment(-1)}
                 >{'-'}</Button>
             </ButtonGroup>
         )
@@ -108,20 +127,22 @@ export default function DicomViewerContainer(props){
 
         }
         else{
-            const makeSliceViewer = (d,axis) => {
+            const makeSliceViewer = (d,axis,centroid) => {
                 return (
                     <VStack w='15vw' h='12vw' className={'lightGutter shadow'}>
                         <Center w='15vw' h='11vw'>
                             <DicomSliceViewer
                                 pCloudData={d}
                                 raycaster={raycaster}
-                                brushHeight={brushHeight}
+                                offset={brushHeight[axis]}
                                 setBrushHeight={setBrushHeight}
-                                epsilon={crossSectionEpsilon}
+                                epsilon={axis === 'z'? crossSectionEpsilonZ:crossSectionEpsilonXY}
                                 changeBrushHeight={changeBrushHeight}
                                 brushedOrgan={brushedOrgan}
                                 setBrushedOrgan={setBrushedOrgan}
                                 crossSectionAxis={axis}
+                                offsetScale={offsetScale}
+                                centroid={centroid}
                             ></DicomSliceViewer>
                         </Center>
                         <Divider/>
@@ -133,12 +154,13 @@ export default function DicomViewerContainer(props){
                 )
             }
             let pCloudEntries = pCloudData.map((d,i)=> {
+                const centroid = pointCloudCenter(d);
                 return (
                 <WrapItem key={'dicomview'+i} className={'shadow'}>
                     <Box>
                         <VStack w='25vw' h ='25vw' className={'lightGutter shadow'}>
                         <Center w='25vw' h='1vw'>
-                            {'Patient: ' + d.id}
+                            {'Patient: ' + d.patient_id}
                         </Center>
                         <Divider></Divider>
                         <Center w='25vw' h='24vw'>
@@ -151,6 +173,7 @@ export default function DicomViewerContainer(props){
                             cameraPositionZ={cameraPositionZ}
                             raycaster={raycaster}
                             brushedOrgan={brushedOrgan}
+                            centroid={centroid}
                             setBrushedOrgan={setBrushedOrgan}
                         ></DicomPointCloudViz>
                         </Center>
@@ -158,13 +181,13 @@ export default function DicomViewerContainer(props){
                     </Box>
                     <Box>
                         <VStack w='15vw' h='25vw'>
-                        {makeSliceViewer(d,'z')}
-                        {makeSliceViewer(d,'x')}
+                        {makeSliceViewer(d,'z',centroid)}
+                        {makeSliceViewer(d,'x',centroid)}
                         </VStack>
                     </Box>
                     <Box>
                     <VStack w='15vw' h='25vw'>
-                        {makeSliceViewer(d,'y')}
+                        {makeSliceViewer(d,'y',centroid)}
                         <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
                             {/* <OrganGraphD3
                                 data={d}
@@ -176,6 +199,7 @@ export default function DicomViewerContainer(props){
                                 data={d}
                                 parameters={props.parameters}
                                 brushedOrgan={brushedOrgan}
+                                centroid={centroid}
                                 setBrushedOrgan={setBrushedOrgan}
                             />
                         </Center>
@@ -190,7 +214,7 @@ export default function DicomViewerContainer(props){
                 </Wrap>
             );
         }
-    },[pCloudData,pIds,brushHeight,brushedOrgan,mainCamera])
+    },[pCloudData,pIds,brushHeight.x,brushHeight.y,brushHeight.z,brushedOrgan,mainCamera])
 
     return <div style={{'height':'auto','overflowY':'visible','width':'100%'}}
         // onKeyDown={handleKeyPress}

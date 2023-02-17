@@ -22,7 +22,9 @@ function App() {
 
   const [patientClouds, setPatientClouds] = useState(null);
   const [patientDicoms, setPatientDicoms] = useState(null);
-  const [selectedCloudIds, setSelectedCloudIds] = useState([1,5]);
+  // const [selectedCloudIds, setSelectedCloudIds] = useState([1072572079, 1054079696]);
+  // const [selectedCloudIds, setSelectedCloudIds] = useState([1014175846, 1019236881]);
+  const [selectedCloudIds, setSelectedCloudIds] = useState([1072572079,1054079696,1014175846,1019236881]);
 
   const fetchDetails = async () => {
     const params = await api.getDetails();

@@ -2,6 +2,9 @@ import pickle
 import simplejson
 import numpy as np
 import datetime
+import glob
+
+DICOM_DIR = '../data/DICOMS/ProcessedPatients/';
 
 def jsonify_np_dict(d):
     def numpy_converter(obj):
@@ -49,9 +52,29 @@ def load_dicom_data():
         patient_list = pickle.load(f)
     return patient_list
 
+def get_all_pids():
+    files = glob.glob(DICOM_DIR + 'pcloud_*.json')
+    pids = []
+    for file in files:
+        pid = file.replace('\\','/').replace(DICOM_DIR,'').replace('pcloud_','').replace('\\','').replace('/','').replace('.json','')
+        if pid.isnumeric():
+            pids.append(int(pid))
+        else:
+            print('bad pid',pid)
+    return pids
+
+def get_patient_parameters(pid):
+    patient = get_patient_pcloud(pid)
+    roi_map = patient['roi_mask_map']
+    rois = list(roi_map.values())
+    keys = list(patient.keys())
+    pkeys = list(patient['point_clouds'].keys())
+    ppkeys = list(patient['point_clouds'][rois[0]].keys())
+    return {'rois': rois, 'roi_map': roi_map, 'field_keys': keys, 'pointcloud_keys': pkeys,'pointcloud_roi_keys': ppkeys}
+
 def get_patient_pcloud(pid):
     try:
-        file = '../data/PatientPointClouds/' + 'pcloud_' + str(int(pid)) + '.json'
+        file = DICOM_DIR + 'pcloud_' + str(int(pid)) + '.json'
         with open(file,'r') as f:
             pcloud = simplejson.load(f)
         return pcloud
@@ -59,7 +82,7 @@ def get_patient_pcloud(pid):
         return
 
 def get_patient_images(pid):
-    file = '../data/PatientPointClouds/' + 'images_' + str(int(pid)) + '.json'
+    file = DICOM_DIR + 'images_' + str(int(pid)) + '.json'
     try:
         with open(file,'r') as f:
             pdict = simplejson.load(f)

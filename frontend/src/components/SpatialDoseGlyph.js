@@ -13,7 +13,7 @@ export default function SpatialDoseGlyph(props){
 
     useEffect(()=>{
         if(height > 0 & width > 0 & Utils.validData(props.data) & Utils.validData(props.parameters)){
-            
+            return;
             const roiList = props.parameters.rois;
             
             if(roiList === undefined | props.brushedOrgan === undefined | props.data.distances === undefined){return}

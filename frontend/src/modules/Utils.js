@@ -9,12 +9,17 @@ export default class Utils {
 
     static getRoiInterpolator(roi){
         roi = roi.toLowerCase();
-        if(roi.includes('gtvp')){
+        if(roi.includes('gtvn')){
+          return d3.interpolateOranges;
+        } else if(roi.includes('gtv')){
           return d3.interpolateReds;
-        } else if(roi.includes('gtvn')){
-          return d3.interpolatePuOr;
-        } else{
-          return d3.interpolateBlues;
+        } else if(roi  === 'ptv'){
+            return d3.interpolateGreens;
+        } else if(roi === 'ctv'){
+            return d3.interpolateBlues;
+        }
+        else{
+          return d3.interpolateGreys;
         }
     }
     
@@ -51,6 +56,11 @@ export default class Utils {
             minVal = Math.min(minVal, value)
         }
         return {min: minVal, max: maxVal}
+    }
+
+    static midpoint(arr){
+        let extents = this.extents(arr);
+        return (extents.max + extents.min)/2
     }
 
     static mean(arr){
