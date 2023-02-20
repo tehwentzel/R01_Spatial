@@ -11,7 +11,7 @@ print('code start')
 # FIELD_KEYS = ['patient_id','study_uid','series_uid','roi_mask_map','point_clouds']
 PATIENT_IDS = get_all_pids()
 print('patient ids',PATIENT_IDS)
-PARAMETERS = get_patient_parameters(PATIENT_IDS[0])
+PARAMETERS = get_patient_parameters()
 # ROI_MAP = dicom_data[0]['roi_mask_map']
 # ROIS = list(ROI_MAP.values())
 # dicom_data = {i['id']: i for i in dicom_data}
@@ -65,6 +65,24 @@ def get_parameters():
 #     data = responsify(return_vals)
 #     print('patient data',data)
 #     return data
+
+@app.route('/distances',methods=['GET'])
+def get_distances():
+    #replace this with a single file when I get that done
+    with open('../data/r01_distances_small.json','r') as f:
+        data = simplejson.load(f)
+    col_order = ORGAN_LIST[:]
+    data = responsify({'distances': data, 'colOrder': col_order,'rowOrder': ['gtv','gtvn']})
+    return data
+
+@app.route('/distances_full',methods=['GET'])
+def get_distances_full():
+    #replace this with a single file when I get that done
+    with open('../data/r01_distances_full.json','r') as f:
+        data = simplejson.load(f)
+    col_order = ORGAN_LIST[:]
+    data = responsify({'distances': data, 'colOrder': col_order,'rowOrder': ['gtv','gtvn'] + col_order})
+    return data
 
 @app.route('/pclouds',methods=['GET'])
 def get_patient_clouds():

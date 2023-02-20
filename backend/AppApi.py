@@ -5,6 +5,38 @@ import datetime
 import glob
 
 DICOM_DIR = '../data/DICOMS/ProcessedPatients/';
+ORGAN_LIST = [
+        'hyoid',
+        'mandible',
+        'brachial_plex_l','brachial_plex_r',
+        'brainstem',
+        'oral_cavity',
+        'glottis',
+        'thyroid',
+        'cricoid',
+        'cricopharyngeal_muscle',
+        'esophagus',
+        'glnd_submand_l','glnd_submand_r',
+        'genioglossus_m',
+        'glottis',
+        'hard_palate','soft_palate',
+        'ipc','spc','mpc',
+        'parotid_l','parotid_r',
+        'larynx',
+        'supraglottic_larynx',
+        'lips_lower','lips_upper',
+        'ant_digastric_l','ant_digastric_r',
+        'mastoid_l','mastoid_r',
+        'medial_pterygoid_l','medial_pterygoid_r',
+        'lateral_pterygoid_l','lateral_pterygoid_r',
+        'buccinator_l','buccinator_r',
+        'masseter_l','masseter_r',
+        'post_digastric_l','post_digastric_r',
+        'sternocleidomastoid_l','sternocleidomastoid_r',
+        'spinal_cord',
+        'tongue',
+        'pituitary',
+    ]
 
 def jsonify_np_dict(d):
     def numpy_converter(obj):
@@ -53,36 +85,34 @@ def load_dicom_data():
     return patient_list
 
 def get_all_pids():
-    files = glob.glob(DICOM_DIR + 'pcloud_*.json')
+    files = glob.glob(DICOM_DIR + 'pclouds_*.json')
     pids = []
     for file in files:
-        pid = file.replace('\\','/').replace(DICOM_DIR,'').replace('pcloud_','').replace('\\','').replace('/','').replace('.json','')
+        pid = file.replace('\\','/').replace(DICOM_DIR,'').replace('pclouds_','').replace('\\','').replace('/','').replace('.json','')
         if pid.isnumeric():
             pids.append(int(pid))
         else:
             print('bad pid',pid)
     return pids
 
-def get_patient_parameters(pid):
-    patient = get_patient_pcloud(pid)
-    roi_map = patient['roi_mask_map']
-    rois = list(roi_map.values())
-    keys = list(patient.keys())
-    pkeys = list(patient['point_clouds'].keys())
-    ppkeys = list(patient['point_clouds'][rois[0]].keys())
-    return {'rois': rois, 'roi_map': roi_map, 'field_keys': keys, 'pointcloud_keys': pkeys,'pointcloud_roi_keys': ppkeys}
-
 def get_patient_pcloud(pid):
     try:
-        file = DICOM_DIR + 'pcloud_' + str(int(pid)) + '.json'
+        file = DICOM_DIR + 'pclouds_' + str(int(pid)) + '.json'
         with open(file,'r') as f:
             pcloud = simplejson.load(f)
         return pcloud
     except:
         return
+    
+def get_patient_parameters():
+    rois = ORGAN_LIST[:] + ['gtv','gtvn','ctv','ptv']
+    distance_row_order = ['gtv','gtvn']
+    distance_col_order = ORGAN_LIST[:]
+    return {'rois': rois, 'distance_row_order': distance_row_order,'distance_col_order': distance_col_order}
 
-def get_patient_images(pid):
-    file = DICOM_DIR + 'images_' + str(int(pid)) + '.json'
+
+def get_patient_dosecloud(pid):
+    file = DICOM_DIR + 'contours_' + str(int(pid)) + '.json'
     try:
         with open(file,'r') as f:
             pdict = simplejson.load(f)
@@ -95,7 +125,7 @@ def get_pclouds(pid_list):
     pclouds = [p for p in pclouds if p is not None]
     return pclouds
 
-def get_p_images(pid_list):
-    pdicts = [get_patient_images(pid) for pid in pid_list]
+def get_p_contours(pid_list):
+    pdicts = [get_patient_contours(pid) for pid in pid_list]
     pdicts = [p for p in pdicts if p is not None]
     return pdicts

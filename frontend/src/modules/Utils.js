@@ -10,16 +10,16 @@ export default class Utils {
     static getRoiInterpolator(roi){
         roi = roi.toLowerCase();
         if(roi.includes('gtvn')){
-          return d3.interpolateOranges;
+          return d3.interpolateOrRd;
         } else if(roi.includes('gtv')){
           return d3.interpolateReds;
         } else if(roi  === 'ptv'){
-            return d3.interpolateGreens;
+            return d3.interpolatePurples;
         } else if(roi === 'ctv'){
             return d3.interpolateBlues;
         }
         else{
-          return d3.interpolateGreys;
+          return d3.interpolateOranges;
         }
     }
     

@@ -28,7 +28,7 @@ function getMaterialArray(renderer){
 }
 
 function pointCloudCenter(pEntry){
-    let pClouds = pEntry['point_clouds'];
+    let pClouds = pEntry['contour_pointclouds'];
     let points = [];
     //if I have too many points it crashes so skip these big middle ones
     const skipRois = ['gtv','gtvn','ctv','ptv','tongue','larynx','ipc','spc','mpc'];
@@ -60,8 +60,9 @@ export default function DicomViewerContainer(props){
 
     const [brushHeight,setBrushHeight] = useState({'x': 0.0, 'y': 0.0, 'z': 0.0});
     const [brushedOrgan, setBrushedOrgan] = useState('gtv');
-    const crossSectionEpsilonXY = 2;
-    const crossSectionEpsilonZ = 1;
+    const [maxToShow,setMaxToShow] = useState(2);
+    const crossSectionEpsilonXY = 0;//2;
+    const crossSectionEpsilonZ = 0;// 1;
     const offsetScale = .2;
 
     function changeBrushHeight(direction){
@@ -78,7 +79,7 @@ export default function DicomViewerContainer(props){
             antialias: true,
             alpha: true
         });
-        r.setClearColor(0x000000, 1);
+        r.setClearColor(0x88888888, 1);//backround color
         r.setPixelRatio(window.devicePixelRatio);
         r.sortObjects = true;
         r.setSize(w,h);
@@ -153,7 +154,7 @@ export default function DicomViewerContainer(props){
                     </VStack>
                 )
             }
-            let pCloudEntries = pCloudData.map((d,i)=> {
+            let pCloudEntries = pCloudData.slice(0,Math.min(maxToShow,pCloudData.length)).map((d,i)=> {
                 const centroid = pointCloudCenter(d);
                 return (
                 <WrapItem key={'dicomview'+i} className={'shadow'}>
@@ -174,6 +175,7 @@ export default function DicomViewerContainer(props){
                             raycaster={raycaster}
                             brushedOrgan={brushedOrgan}
                             centroid={centroid}
+                            plotRois={props.parameters.rois}
                             setBrushedOrgan={setBrushedOrgan}
                         ></DicomPointCloudViz>
                         </Center>
@@ -198,6 +200,7 @@ export default function DicomViewerContainer(props){
                             <SpatialDoseGlyph
                                 data={d}
                                 parameters={props.parameters}
+                                distanceData={props.distanceData}
                                 brushedOrgan={brushedOrgan}
                                 centroid={centroid}
                                 setBrushedOrgan={setBrushedOrgan}
