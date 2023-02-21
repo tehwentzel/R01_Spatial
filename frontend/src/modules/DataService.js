@@ -44,6 +44,17 @@ export default class DataService {
         
     }
 
+    async getPatientDistances(patientIds){
+        //will evantually make this a single file
+        try{
+            const response = await this.api.get('/distances')
+            return response.data
+        } catch(error){
+            console.log('error in getpatientclouds');
+            console.log(error)
+        }
+    }
+
     async getPatientFiles(patientIds,root){
         //root = pclouds for patient clouds, images for patient images
         if(root == undefined){

@@ -10,6 +10,7 @@ import DataService from './modules/DataService';
 import Utils from './modules/Utils';
 
 import DicomViewerContainer from './components/DicomViewerContainer.js';
+import ScatterPlotD3 from './components/ScatterPlotsD3.js';
 
 function App() {
   // 2. Wrap ChakraProvider at the root of your app
@@ -22,7 +23,13 @@ function App() {
 
   const [patientClouds, setPatientClouds] = useState(null);
   const [patientDicoms, setPatientDicoms] = useState(null);
-  const [selectedCloudIds, setSelectedCloudIds] = useState([1,5]);
+
+  const [selectedCloudIds, setSelectedCloudIds] = useState([
+    4663235737
+  ]);
+
+  //as of writting this is {'distances': NxO array of gtv -> organ distanes, 'patients': list of patient ids in the order of the array, roiOrder: list of rois in the order of the array}
+  const [patientDistanceData,setPatientDistanceData] =  useState(null);
 
   const fetchDetails = async () => {
     const params = await api.getDetails();
@@ -41,10 +48,21 @@ function App() {
   // }
 
   const fetchPatientClouds = async(patientIds) => {
-    setPatientClouds(null);
-    const pData = await api.getPatientFiles(patientIds,'pclouds');
-    console.log('patient clouds',pData);
-    setPatientClouds(pData);
+    var loadedPatients = patientClouds === null? []:patientClouds.filter(d=> patientIds.indexOf(parseInt(d.patient_id)) > -1);
+    var skipIds = loadedPatients.map(d=>parseInt(d.patient_id));
+    var toFetch = patientIds.filter(pid => skipIds.indexOf(pid) < 0);
+    // console.log(patientIds,skipIds,toFetch);
+    if(toFetch.length > 0){
+      setPatientClouds(null);
+      const pData = await api.getPatientFiles(toFetch,'pclouds');
+      for(let pc of loadedPatients){
+        pData.push(pc);
+      }
+      setPatientClouds(pData);
+      console.log('patient clouds');
+    } else{
+      setPatientClouds(loadedPatients)
+    }
   }
 
   //for later
@@ -55,12 +73,20 @@ function App() {
     setPatientDicoms(pData);
   }
 
+  const fetchDistances = async() => {
+    setPatientDistanceData(null);
+    const dData = await api.getPatientDistances();
+    setPatientDistanceData(dData);
+  }
 
   useEffect(() => {
     // console.log('fetching')
     fetchDetails();
   },[]) 
 
+  useEffect(() => {
+    fetchDistances();
+  },[])
 
   useEffect(() => {
     fetchPatientClouds(selectedCloudIds);
@@ -73,28 +99,34 @@ function App() {
         h='100%'
         w='100%'
         templateRows='2em repeat(4,1fr)'
-        templateColumns='repeat(3,1fr)'
+        templateColumns='calc(55vw + 1em) repeat(2,1fr)'
         gap={1}
       >
         <GridItem rowSpan={1} colSpan={3} bg='green'>
           {'top'}
         </GridItem>
-        <GridItem rowSpan={3} className={'shadow scroll'} colSpan={2}>
+        <GridItem rowSpan={4} className={'shadow scroll'} colSpan={1}>
           <DicomViewerContainer
             selectedCloudIds={selectedCloudIds}
             patientClouds={patientClouds}
             patientDicoms={patientDicoms}
             parameters={parameters}
+            distanceData={patientDistanceData}
           >
           </DicomViewerContainer>
         </GridItem>
-        <GridItem rowSpan={2} colSpan={1} className={'shadow'}>
-          {'3'}
+        <GridItem rowSpan={2} colSpan={2} className={'shadow'}>
+          <ScatterPlotD3
+            distanceData={patientDistanceData}
+            parameters={parameters}
+            selectedCloudIds={selectedCloudIds}
+            setSelectedCloudIds={setSelectedCloudIds}
+          />
         </GridItem>
-        <GridItem rowSpan={1} colSpan={2} className={'shadow'}>
+        {/* <GridItem rowSpan={1} colSpan={2} className={'shadow'}>
           {'4'}
-        </GridItem>
-        <GridItem rowSpan={2} colSpan={1} className={'shadow'}>
+        </GridItem> */}
+        <GridItem rowSpan={2} colSpan={2} className={'shadow'}>
           {'5'}
         </GridItem>
       </Grid>
