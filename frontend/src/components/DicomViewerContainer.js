@@ -63,10 +63,9 @@ export default function DicomViewerContainer(props){
     const [maxToShow,setMaxToShow] = useState(2);
     const crossSectionEpsilonXY = 0;//2;
     const crossSectionEpsilonZ = 0;// 1;
-    const offsetScale = .2;
 
     function changeBrushHeight(direction){
-        let newHeight = brushHeight + (2*crossSectionEpsilonXY*direction);
+        let newHeight = brushHeight + (direction);
         setBrushHeight(newHeight);
     }
     
@@ -90,9 +89,14 @@ export default function DicomViewerContainer(props){
         const increment = (direction) => {
             let newBrush = Object.assign({},brushHeight);
             newBrush[axis] = newBrush[axis] + (direction);
-            setBrushHeight(newBrush)
+            setBrushHeight(newBrush);
         };
 
+        const reset = () => {
+            let newBrush = Object.assign({},brushHeight);
+            newBrush[axis] = 0;
+            setBrushHeight(newBrush);
+        }
         return (
             <ButtonGroup isAttached size='sm' gap='0' width='auto' margin='.1em'>
                 <Button
@@ -105,8 +109,9 @@ export default function DicomViewerContainer(props){
                     width='auto'
                     height='100%'
                     colorScheme='teal'
+                    onClick={()=>reset()}
                 >
-                    {axis + '-offset: ' + (offsetScale*brushHeight[axis]).toFixed(1)}
+                    {axis + '-offset: ' + (brushHeight[axis]).toFixed(1)}
                 </Button>
                 <Button
                     width='auto'
@@ -142,7 +147,7 @@ export default function DicomViewerContainer(props){
                                 brushedOrgan={brushedOrgan}
                                 setBrushedOrgan={setBrushedOrgan}
                                 crossSectionAxis={axis}
-                                offsetScale={offsetScale}
+
                                 centroid={centroid}
                             ></DicomSliceViewer>
                         </Center>
@@ -157,7 +162,7 @@ export default function DicomViewerContainer(props){
             let pCloudEntries = pCloudData.slice(0,Math.min(maxToShow,pCloudData.length)).map((d,i)=> {
                 const centroid = pointCloudCenter(d);
                 return (
-                <WrapItem key={'dicomview'+i} className={'shadow'}>
+                <WrapItem key={'dicomview'+d['patient_id']} className={'shadow'}>
                     <Box>
                         <VStack w='25vw' h ='25vw' className={'lightGutter shadow'}>
                         <Center w='25vw' h='1vw'>
@@ -198,7 +203,7 @@ export default function DicomViewerContainer(props){
                                 setBrushedOrgan={setBrushedOrgan}
                             /> */}
                             <SpatialDoseGlyph
-                                data={d}
+                                patientData={d}
                                 parameters={props.parameters}
                                 distanceData={props.distanceData}
                                 brushedOrgan={brushedOrgan}

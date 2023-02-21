@@ -32,22 +32,6 @@ function circlePath(r){
     return path;
 }
 
-// function valToShape(vals,size){
-//     let string = circlePath(size) + ' M 0,0 ';
-//     var arcLength = 2*Math.PI/vals.length;
-//     var makeline = (value,angle) => {
-//         let [x,y] = radToCartesian(angle);
-//         let newString = " L" + value*size*x + ',' + value*size*y + ' 0,0';
-//         return  newString;
-//     }
-//     let currAngle = -Math.PI/2;
-//     for(let v of vals){
-//         string = string + makeline(v,currAngle);
-//         currAngle += arcLength;
-//     }
-//     return string;
-// }
-
 function valToShape(vals,size){
     // let string = circlePath(size) + ' M 0,0 ';
     let string = 'M 0,0 '
@@ -92,13 +76,16 @@ export default function ScatterPlotD3(props){
 
     const d3Container = useRef(null);
     const [svg, height, width, tTip] = useSVGCanvas(d3Container);
+    const [brushedPatient,setBrushedPatient] = useState(4663235737);
+    const [getTransform,setGetTransform] = useState(null);
     const radius = 10;
     const padding = 40;
     const plotType = 'pca';
 
     const plot_rois = ['tongue','ipc','spc','mpc',
     'hard_palate','soft_palate','esophagus','brainstem',
-    'sternocleidomastoid_l','sternocleidomastoid_r']
+    'sternocleidomastoid_l','sternocleidomastoid_r','larynx','masseter_l','masseter_r','oral_cavity']
+
 
 
     function plotPCA(data){
@@ -114,8 +101,8 @@ export default function ScatterPlotD3(props){
 
         const fix = a => {
             a = a.map( d => d >= 10000000? 0:d)
-            return a
-            // return plotColOrder.map( i => a[i]) //only use plot_rois instead of all of them
+            // return a
+            return plotColOrder.map( i => a[i]) //only use plot_rois instead of all of them
         }
         let gtvPoints = pids.map( a => fix(data.distances[a][gtvPos]));
         let gtvnPoints = pids.map( a => fix(data.distances[a][gtvnPos]));
@@ -178,6 +165,20 @@ export default function ScatterPlotD3(props){
         const getX = d => xScale(d.x);
         const getY = d => yScale(d.y);
 
+        function transform(d){
+            if(d === null){
+                return ''
+            }
+            if(d.patient === undefined){
+                return ''
+            }
+            if(parseInt(d.patient) !== brushedPatient){
+                return 'translate(' + getX(d) + ',' + getY(d) + ')';
+            }
+            console.log(d.patient)
+            return  'scale(10,10) translate(' + getX(d) + ',' + getY(d) + ')';
+        }
+        setGetTransform(transform.bind(this));
         const getColor = d => {
             if(props.parameters.patientIDs.indexOf(parseInt(d.patient)) > -1){
                 return d.type === 'gtv'? 'red': 'orange';
@@ -185,7 +186,7 @@ export default function ScatterPlotD3(props){
             return 'grey';
         }
         const getOpacity = d => d.type === 'gtv'? 1:.8;
-        const getRadius = d => 10;//d.type === 'gtv'? 10:6;
+        const getRadius = d => 6;//d.type === 'gtv'? 10:6;
 
         const getPath = d => {
             return valToShape(d.original.map(proximityScale),getRadius(d));
@@ -214,7 +215,7 @@ export default function ScatterPlotD3(props){
             .data(allPoints).enter()
             .append('path').attr('class',className)
             .attr('d',getPath)
-            .attr('transform',d => 'translate(' + getX(d) + ',' + getY(d) + ')')
+            .attr('transform',transform)
             .attr('fill',getColor)
             .attr('stroke','black')
             .attr('stroke-width',1)
@@ -232,15 +233,17 @@ export default function ScatterPlotD3(props){
                     string += colOrder[i] + ': ' + d.original[i].toFixed(3) + '</br>'; 
                 }
                 tTip.html(string);
+                setBrushedPatient(d.patient);
             }).on('mousemove', function(e){
                 Utils.moveTTipEvent(tTip,e);
             }).on('mouseout', function(e){
                 Utils.hideTTip(tTip);
+                setBrushedPatient(null);
             });;
 
         const tick = ()=>{
             connections.attr('d',linkArc);
-            svgPoints.attr('transform',d => 'translate(' + getX(d) + ',' + getY(d) + ')')
+            svgPoints.attr('transform',transform)
           }
 
         var simulation = d3.forceSimulation(allPoints)
@@ -250,6 +253,7 @@ export default function ScatterPlotD3(props){
             .force('y',d3.forceY(d=>d.baseY).strength(1))
             .force('link',forceLink)
             .on('tick',tick);
+
     }
 
     function plotRadVis(data){
@@ -266,6 +270,26 @@ export default function ScatterPlotD3(props){
             }
         }
     },[height,width,props.distanceData]);
+
+
+    useEffect(()=>{
+        if(svg === undefined){ return; }
+        const isActive = d => d.patient === brushedPatient;
+        if(brushedPatient === null){
+            svg.selectAll('path')
+                .style('opacity','');
+        }
+        else{
+            svg.selectAll('path')
+                .style('opacity',d=>isActive(d)? 1:.5);
+
+            // if(getTransform !== null){
+            //     console.log(getTransform)
+            //     svg.selectAll('.gtvPoints')
+            //         .attr('transform', d => isActive(d)? 'scale(3)' + getTransform(d): getTransform(d));
+            // }
+        }
+    },[svg,brushedPatient])
 
     return (
         <div

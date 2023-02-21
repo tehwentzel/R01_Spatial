@@ -25,8 +25,7 @@ function App() {
   const [patientDicoms, setPatientDicoms] = useState(null);
 
   const [selectedCloudIds, setSelectedCloudIds] = useState([
-    1087308891, 
-    1108642427,
+    4663235737
   ]);
 
   //as of writting this is {'distances': NxO array of gtv -> organ distanes, 'patients': list of patient ids in the order of the array, roiOrder: list of rois in the order of the array}
@@ -49,10 +48,21 @@ function App() {
   // }
 
   const fetchPatientClouds = async(patientIds) => {
-    setPatientClouds(null);
-    const pData = await api.getPatientFiles(patientIds,'pclouds');
-    console.log('patient clouds',pData);
-    setPatientClouds(pData);
+    var loadedPatients = patientClouds === null? []:patientClouds.filter(d=> patientIds.indexOf(parseInt(d.patient_id)) > -1);
+    var skipIds = loadedPatients.map(d=>parseInt(d.patient_id));
+    var toFetch = patientIds.filter(pid => skipIds.indexOf(pid) < 0);
+    // console.log(patientIds,skipIds,toFetch);
+    if(toFetch.length > 0){
+      setPatientClouds(null);
+      const pData = await api.getPatientFiles(toFetch,'pclouds');
+      for(let pc of loadedPatients){
+        pData.push(pc);
+      }
+      setPatientClouds(pData);
+      console.log('patient clouds');
+    } else{
+      setPatientClouds(loadedPatients)
+    }
   }
 
   //for later
@@ -107,7 +117,6 @@ function App() {
         </GridItem>
         <GridItem rowSpan={2} colSpan={2} className={'shadow'}>
           <ScatterPlotD3
-            key={selectedCloudIds[0]}
             distanceData={patientDistanceData}
             parameters={parameters}
             selectedCloudIds={selectedCloudIds}

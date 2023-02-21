@@ -20,11 +20,19 @@ function unravelDict(roiDict){
     return array
 }
 
-function getRoiCentroid(points){
+function getCentroidZ(points,offset){
     //technically this is actually the mode now
     //want to get the level with the most points
-    let centroid = [0,1,2].map(i => Utils.mode(points.map(d=>d[i])));
-    centroid = {'x': centroid[0], 'y': centroid[1], 'z': centroid[2]};
+    var levels = [... new Set(points)];
+    var centroid = Utils.mode(points);
+    offset = parseInt(offset);
+    if(offset != 0){
+        levels.sort()
+        let index = levels.indexOf(centroid);
+        index = Math.min(index + offset,levels.length);
+        index = Math.max(index, 0)
+        return levels[index];
+    }
     return centroid
 }
 
@@ -72,12 +80,13 @@ export default function DicomSliceViewer(props){
                 return;
             }
             const crossSectionAxis = props.crossSectionAxis? props.crossSectionAxis:'z';
-            const centroidOffset = props.offsetScale*props.offset;
+            const centroidOffset = props.offset;
 
             const sliceAxisIndex = coordIndex[crossSectionAxis];
-            const roiCentroid = Utils.mode(pointClouds[brushedOrgan].coordinates.map( d => d[sliceAxisIndex]));
+            const roiCentroid = getCentroidZ(pointClouds[brushedOrgan].coordinates.map( d => d[sliceAxisIndex]),centroidOffset) 
+            // Utils.mode(pointClouds[brushedOrgan].coordinates.map( d => d[sliceAxisIndex]));
             const pointGood = (point,eps) => {
-                return Math.abs(centroidOffset + roiCentroid - point[sliceAxisIndex]) <= eps;
+                return Math.abs(roiCentroid - point[sliceAxisIndex]) <= eps;
             }
 
             let getX = d => d.x;
@@ -141,12 +150,12 @@ export default function DicomSliceViewer(props){
                 // }
 
                 //calculate the concave hull around each set of stuff
-                if(roi.includes('gtv') | roi == brushedOrgan){
+                // if(roi.includes('gtv') | roi == brushedOrgan){
                     if(roiPoints.length > 10 & !roi.includes('ptv') & !roi.includes('ctv') ){
                         const edges = concaveman(roiPoints.map(d=> [getX(d),getY(d)]));
                         paths.push({'points': edges,'roi': roi});
                     }
-                }
+                // }
             }
             // console.log('filteredpoins',paths);
 
@@ -258,7 +267,7 @@ export default function DicomSliceViewer(props){
                 .attr('d',d=>arcFunc(d.points))
                 .attr('fill-opacity',0)
                 .attr('fill','none')
-                .attr('stroke-width',2)
+                .attr('stroke-width',d => d.roi.includes('gtv') | (d.roi === props.brushedOrgan)? 3:1)
                 .attr('stroke', d=> Utils.getRoiInterpolator(d.roi)(1))
                 .on('mouseover',function(e,d){
                     tTip.html(d.roi);
