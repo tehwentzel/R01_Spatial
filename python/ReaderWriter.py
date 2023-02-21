@@ -654,17 +654,17 @@ class DicomReaderWriter(object):
                     some_contours_exist = True
             if lacking_rois:
                 all_contours_exist = False
-                if self.verbose:
-                    print('Lacking {} in index {}, location {}. Found {}'.format(lacking_rois, index,
-                                                                                 self.series_instances_dictionary[index]
-                                                                                 ['Image_Path'], self.rois_in_case))
+#                 if self.verbose:
+#                     print('Lacking {} in index {}, location {}. Found {}'.format(lacking_rois, index,
+#                                                                                  self.series_instances_dictionary[index]
+#                                                                                  ['Image_Path'], self.rois_in_case))
             if index not in self.indexes_with_contours:
                 if all_contours_exist:
                     self.indexes_with_contours.append(index)
                 elif some_contours_exist and not self.require_all_contours:
                     self.indexes_with_contours.append(index)  # Add the index that have at least some of the contours
 
-    def return_rois(self, print_rois=True) -> List[str]:
+    def return_rois(self, print_rois=False) -> List[str]:
         if print_rois:
             print('The following ROIs were found')
             for roi in self.all_rois:
@@ -742,10 +742,10 @@ class DicomReaderWriter(object):
 
     def which_indexes_have_all_rois(self):
         if self.Contour_Names:
-            print('The following indexes have all ROIs present')
-            for index in self.indexes_with_contours:
-                print('Index {}, located at {}'.format(index, self.series_instances_dictionary[index]['Image_Path']))
-            print('Finished listing present indexes')
+#             print('The following indexes have all ROIs present')
+#             for index in self.indexes_with_contours:
+#                 print('Index {}, located at {}'.format(index, self.series_instances_dictionary[index]['Image_Path']))
+#             print('Finished listing present indexes')
             return self.indexes_with_contours
         else:
             print('You need to first define what ROIs you want, please use'
@@ -753,14 +753,14 @@ class DicomReaderWriter(object):
 
     def which_indexes_lack_all_rois(self):
         if self.Contour_Names:
-            print('The following indexes are lacking all ROIs')
+#             print('The following indexes are lacking all ROIs')
             indexes_lacking_rois = []
             for index in self.series_instances_dictionary:
                 if index not in self.indexes_with_contours:
                     indexes_lacking_rois.append(index)
-                    print('Index {}, located at '
-                          '{}'.format(index, self.series_instances_dictionary[index]['Image_Path']))
-            print('Finished listing lacking indexes')
+#                     print('Index {}, located at '
+#                           '{}'.format(index, self.series_instances_dictionary[index]['Image_Path']))
+#             print('Finished listing lacking indexes')
             return indexes_lacking_rois
         else:
             print('You need to first define what ROIs you want, please use'
@@ -1278,7 +1278,8 @@ class DicomReaderWriter(object):
             if not temp_color_list:
                 temp_color_list = copy.deepcopy(color_list)
             color_int = np.random.randint(len(temp_color_list))
-            print('Writing data for ' + Name)
+            if self.verbose:
+                print('Writing data for ' + Name)
             annotations = copy.deepcopy(base_annotations[:, :, :, int(self.ROI_Names.index(Name) + 1)])
             annotations = annotations.astype('int')
 
@@ -1288,7 +1289,8 @@ class DicomReaderWriter(object):
                 self.RS_struct.StructureSetROISequence.insert(0,
                                                               copy.deepcopy(self.RS_struct.StructureSetROISequence[0]))
             else:
-                print('Prediction ROI {} is already within RT structure'.format(Name))
+                if self.verbose:
+                    print('Prediction ROI {} is already within RT structure'.format(Name))
                 continue
             self.RS_struct.StructureSetROISequence[self.struct_index].ROINumber = new_ROINumber
             self.RS_struct.StructureSetROISequence[self.struct_index].ReferencedFrameOfReferenceUID = \
@@ -1468,6 +1470,106 @@ class Dicom_to_Imagestack(DicomReaderWriter):
         print('Please move from using Dicom_to_Imagestack to DicomReaderWriter, same arguments are passed')
         super().__init__(**kwargs)
 
+        
+class BetterDicomReader(DicomReaderWriter):
+    
+    def __init__(self,ddir,subfolders = [''],**kwargs):
+        kwargs['verbose'] = True
+        kwargs['get_dose_output'] = True
+        super(BetterDicomReader,self).__init__(**kwargs)
+        self.walk_through_folders(ddir,subfolders)
+    
+    def get_contour_mask_index(self,name):
+        names = self.Contour_Names
+        if name in names:
+            return names.index(name) + 1
+        return -1
+
+    def set_by_uid(self,uid):
+#         format_string = lambda x: str(x)
+#         if isinstance(uid,int):
+        format_string = lambda x: int(x)
+    
+        for key, pdict in self.series_instances_dictionary.items():
+            if format_string(pdict.get('PatientID')) == format_string(uid):
+                self.index = key
+                return True
+        print('failed to find patient id', uid)
+        return False
+    
+    def get_all_uids(self):
+        uids = [(k, pdict.get('PatientID',-1)) for k,pdict in self.series_instances_dictionary.items()]
+        uids = sorted(uids, key = lambda x: x[0])
+        return [u[1] for u in uids]
+    
+    def get_patient(self,uid=None,index=None):
+        if uid is None and index is None:
+            print('need index or uid')
+            return False
+        if uid is not None:
+            if index is not None:
+                print('using uid instead of index')
+            format_string = lambda x: int(x)
+            for key, pdict in self.series_instances_dictionary.items():
+                if format_string(pdict.get('PatientID')) == format_string(uid):
+                    return pdict
+        else:
+            pdict = self.series_instances_dictionary.get(index)
+            return pdict
+        
+    def get_current_patient(self):
+        return self.series_instances_dictionary[self.index]
+    
+    def walk_through_folders(self, input_path,subfolders,thread_count=int(cpu_count() * 0.9 - 1)):
+        """
+        Iteratively work down paths to find DICOM files, if they are present, add to the series instance UID dictionary
+        :param input_path: path to walk
+        """
+        paths_with_dicom = []
+        for sf in subfolders:
+            for root, dirs, files in os.walk(input_path+sf):
+                dicom_files = [i for i in files]# if (i.endswith('.dcm') or '.' not in i)]
+    #             if self.verbose:
+    #                 print(dicom_files)
+                if dicom_files:
+                    paths_with_dicom.append(root)
+        if paths_with_dicom:
+            q = Queue(maxsize=thread_count)
+            pbar = tqdm(total=len(paths_with_dicom), desc='Loading through DICOM files')
+            A = (q, pbar)
+            threads = []
+            for worker in range(thread_count):
+                t = Thread(target=folder_worker, args=(A,))
+                t.start()
+                threads.append(t)
+            for index, path in enumerate(paths_with_dicom):
+                item = [path, self.images_dictionary, self.rt_dictionary, self.rd_dictionary, self.rp_dictionary,
+                        self.verbose]
+                q.put(item)
+            for i in range(thread_count):
+                q.put(None)
+            for t in threads:
+                t.join()
+            self.__compile__()
+        if self.verbose or len(self.series_instances_dictionary) > 1:
+            for key in self.series_instances_dictionary:
+                print('Index {}, description {} at {}'.format(key,
+                                                              self.series_instances_dictionary[key]['Description'],
+                                                              self.series_instances_dictionary[key]['Image_Path']))
+            print('{} unique series IDs were found. Default is index 0, to change use '
+                  'set_index(index)'.format(len(self.series_instances_dictionary)))
+        self.__check_if_all_contours_present__()
+        return None
+    
+    def __repr__(self):
+        return str({k: v for k,v in self.series_instances_dictionary[self.index].items() if 'files' not in str(k).lower()})
+
+def dicom_reader_from_ids(id_list,root=None):
+    if root is None:
+        root = '../data/DICOMs/R01/'
+    subfolders = [str(pid)+'/' for pid in id_list]
+    dr = BetterDicomReader(root,subfolders=subfolders)
+    return dr
 
 # if __name__ == '__main__':
 #     pass
