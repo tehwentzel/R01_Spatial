@@ -18,6 +18,21 @@ def filter_pcloud_outliers(points, maxq = .95, min_k = 3):
     good = (good >= min_k)
     return points[good]
 
+def np_converter(obj):
+    #converts stuff to vanilla python  for json since it gives an error with np.int64 and arrays
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.float):
+        return round(float(obj),3)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, datetime.datetime) or isinstance(obj, datetime.time):
+        return obj.__str__()
+    print('np_converter cant encode obj of type', obj,type(obj))
+    return obj
+
 #this code if for formatting and extracitng the patient info with custom scripts
 def cloud_centroid(points):
     #centroid of pointclouds
