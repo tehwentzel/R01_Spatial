@@ -46,15 +46,16 @@ function getValidOrgan(pc, organ){
     }
     return 'none'
 }
+
 export default function DicomSliceViewer(props){
 
     const d3Container = useRef(null);
     const [svg, height, width, tTip] = useSVGCanvas(d3Container);
     const epsilon = 0;//props.epsilon? props.epsilon: 0;//thickness of the crossesction, can be 0 since we used mode for the center
     const padding = 10;
-    const defaultSpacing = [2.75,2.5,2.75];//pixel spacing, currentyl using trial and eror
+    const defaultSpacing = [3,3,3];//pixel spacing, currentyl using trial and eror
 
-    const skipRois = ['oral_cavity']
+    const skipRois = props.skipRois === undefined? ['oral_cavity','ctv']: props.skipRois;
     const cornerTextOptions = {
         'x': 'Side(L)',
         'z': 'Top(S)',
@@ -66,11 +67,20 @@ export default function DicomSliceViewer(props){
         'z': 2,
     }
 
+    function getDrawOrder(roi){
+        if(roi.includes("gtv") | roi === props.brushedOrgan){
+            return 1;
+        } else if(roi === 'ptv' | roi === 'ctv'){
+            return -1;
+        }
+        return 0;
+    }
     useEffect(()=>{
         if(height > 0 & width > 0 & Utils.validData(props.pCloudData)){
             svg.selectAll().remove();
 
             // return
+            // console.log('slice',props.pCloudData);
             const pointClouds = props.pCloudData['contour_pointclouds'];
             const contours = props.pCloudData['contours'];
             const brushedOrgan = getValidOrgan(pointClouds,props.brushedOrgan);
@@ -128,6 +138,7 @@ export default function DicomSliceViewer(props){
                             'roi': roi,
                             'value': value,
                             'active': roi === brushedOrgan,
+                            'drawOrder': getDrawOrder(roi),
                         }
                         filteredPoints.push(newEntry)
                         roiPoints.push(newEntry)
@@ -153,22 +164,23 @@ export default function DicomSliceViewer(props){
                 // if(roi.includes('gtv') | roi == brushedOrgan){
                     if(roiPoints.length > 10 & !roi.includes('ptv') & !roi.includes('ctv') ){
                         const edges = concaveman(roiPoints.map(d=> [getX(d),getY(d)]));
-                        paths.push({'points': edges,'roi': roi});
+                        paths.push({'points': edges,'roi': roi,'drawOrder':getDrawOrder(roi)});
                     }
                 // }
             }
             // console.log('filteredpoins',paths);
-
             //this is for rendering purposes: show stuff on top that is on top
             if(epsilon > 0){
                 filteredPoints.sort((a,b) => a[crossSectionAxis] - b[crossSectionAxis]);
             }
             
+            filteredPoints.sort((a,b) => a.drawOrder - b.drawOrder);
+            paths.sort((a,b) => a.drawOrder - b.drawOrder);
             
 
 
-            const [xMin,xMax] = d3.extent(filteredPoints, getX);
-            const [yMin, yMax] = d3.extent(filteredPoints, getY);
+            const [xMin,xMax] = d3.extent(filteredPoints.filter(p => p.roi !== 'ptv' & p.roi !== 'ctv'), getX);
+            const [yMin, yMax] = d3.extent(filteredPoints.filter(p => p.roi !== 'ptv' & p.roi !== 'ctv'), getY);
             const [minVal,maxVal] = d3.extent(filteredPoints, p => p.value);
 
             //if there are < 2000 points double the size?
@@ -198,14 +210,18 @@ export default function DicomSliceViewer(props){
                 return interp(v);
             }
             const getOpacity = d => {
-                if(d.roi === props.burshedOrgan){
-                    return 1
-                }else{
-                    let tumors = ['gtv','gtvn']
-                    let supplement = ['ctv','ptv'];
-                    return tumors.indexOf(d.roi) > -1? .9: supplement.indexOf(d.roi) > -1? .4:.8;
+                if(d.roi === 'ptv' | d.roi === 'ctv'){
+                    return .5
                 }
-                return .25;
+                return 1
+                // if(d.roi === props.brushedOrgan){
+                //     return 1
+                // }else{
+                //     let tumors = ['gtv','gtvn']
+                //     let supplement = ['ctv','ptv'];
+                //     return tumors.indexOf(d.roi) > -1? .9: supplement.indexOf(d.roi) > -1? .4:.8;
+                // }
+                // return .25;
             }
             svg.selectAll('.pixel').remove();
 
@@ -239,26 +255,6 @@ export default function DicomSliceViewer(props){
 
             svg.selectAll('.activePixel').raise();
 
-            // svg.selectAll('circle').filter('.pixel')
-            //     .data(filteredPoints).enter()
-            //     .append('circle').attr('class','pixel')
-            //     .attr('cx', d=>xScale(getX(d)))
-            //     .attr('cy', d => yScale(getY(d)))
-            //     .attr('r',pointRadius)
-            //     .attr('fill',getColor)
-            //     .attr('opacity',getOpacity)
-            //     .on('click',(e,d)=>{
-            //         const roi = d.roi;
-            //         if(roi !== undefined & roi !== brushedOrgan){
-            //             props.setBrushedOrgan(roi);
-            //         }
-            //     }).on('mouseover',function(e,d){
-            //         tTip.html(d.roi + '</br>' + d.value);
-            //     }).on('mousemove', function(e){
-            //         Utils.moveTTipEvent(tTip,e);
-            //     }).on('mouseout', function(e){
-            //         Utils.hideTTip(tTip);
-            //     });
 
             svg.selectAll('path').filter('.organOutline').remove();
             svg.selectAll('path').filter('.organOutline')
@@ -267,8 +263,8 @@ export default function DicomSliceViewer(props){
                 .attr('d',d=>arcFunc(d.points))
                 .attr('fill-opacity',0)
                 .attr('fill','none')
-                .attr('stroke-width',d => d.roi.includes('gtv') | (d.roi === props.brushedOrgan)? 3:1)
-                .attr('stroke', d=> Utils.getRoiInterpolator(d.roi)(1))
+                .attr('stroke-width',d => d.roi.includes('gtv') | (d.roi === props.brushedOrgan)? 3:2)
+                .attr('stroke', d => d.roi.includes('gtv') | (d.roi === props.brushedOrgan)? 'white':'black')
                 .on('mouseover',function(e,d){
                     tTip.html(d.roi);
                 }).on('mousemove', function(e){

@@ -3,7 +3,7 @@ import * as constants from "../modules/Constants.js";
 import * as THREE from "three";
 import DicomPointCloudViz from './DicomPointCloudViz.js';
 import DicomSliceViewer from './DicomSliceViewer.js';
-import OrganGraphD3 from './OrganGraphD3.js';
+import ClinicalGlyph from './ClinicalGlyph.js';
 import SpatialDoseGlyph from './SpatialDoseGlyph.js'
 import Utils from '../modules/Utils.js';
 import {Wrap, WrapItem, Center, Spinner, VStack, Box, Button, ButtonGroup,Divider} from '@chakra-ui/react';
@@ -194,14 +194,8 @@ export default function DicomViewerContainer(props){
                     </Box>
                     <Box>
                     <VStack w='15vw' h='25vw'>
-                        {makeSliceViewer(d,'y',centroid)}
+                        {/* {makeSliceViewer(d,'y',centroid)} */}
                         <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
-                            {/* <OrganGraphD3
-                                data={d}
-                                parameters={props.parameters}
-                                brushedOrgan={brushedOrgan}
-                                setBrushedOrgan={setBrushedOrgan}
-                            /> */}
                             <SpatialDoseGlyph
                                 patientData={d}
                                 parameters={props.parameters}
@@ -211,7 +205,14 @@ export default function DicomViewerContainer(props){
                                 setBrushedOrgan={setBrushedOrgan}
                             />
                         </Center>
-                        </VStack>
+                        <Center w='15vw' h = '12vw' className={'lightGutter shadow'}>
+                            <ClinicalGlyph
+                                data={props.mdasiData}
+                                patientId={d.patient_id}
+                                parameters={props.parameters}
+                            />
+                        </Center>
+                    </VStack>
                     </Box>
                 </WrapItem>
                 )

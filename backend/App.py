@@ -66,13 +66,19 @@ def get_parameters():
 #     print('patient data',data)
 #     return data
 
+@app.route('/mdasi')
+def get_mdasi():
+    data = load_mdasi_data()
+    response = responsify(data)
+    return response
+
 @app.route('/distances',methods=['GET'])
 def get_distances():
     #replace this with a single file when I get that done
     with open('../data/r01_distances_small.json','r') as f:
         data = simplejson.load(f)
-    col_order = ORGAN_LIST[:]
-    data = responsify({'distances': data, 'colOrder': col_order,'rowOrder': ['gtv','gtvn']})
+    # col_order = ORGAN_LIST[:]
+    # data = responsify({'distances': data, 'colOrder': col_order,'rowOrder': ['gtv','gtvn']})
     return data
 
 @app.route('/distances_full',methods=['GET'])
