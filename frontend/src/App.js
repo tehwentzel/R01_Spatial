@@ -4,7 +4,7 @@ import React, {useEffect, useState} from 'react';
 import './App.css';
 
 // 1. import `ChakraProvider` component
-import { ChakraProvider,Grid,GridItem } from '@chakra-ui/react';
+import { ChakraProvider,Grid,GridItem, Select,Box ,InputGroup} from '@chakra-ui/react';
 
 import DataService from './modules/DataService';
 import Utils from './modules/Utils';
@@ -93,6 +93,35 @@ function App() {
     fetchPatientClouds(selectedCloudIds);
   },[selectedCloudIds]);
 
+  function makeTopBar(){
+    if(parameters.patientIDs === undefined | selectedCloudIds === null | selectedCloudIds === undefined){
+      return (<p>{'top'}</p>)
+    }
+
+    const changeSelectedId = (e) =>{
+      let value = e.target.value;
+      setSelectedCloudIds([parseInt(value)])
+    }
+    var currentId = selectedCloudIds[0];
+    var options = parameters.patientIDs.map(d => {
+      return (
+        <option value={d}>{d}</option>
+      )
+    });
+    return (
+      <InputGroup w='100%' h='100%' 
+      className={'shadow'} 
+      style={{'padding-left': '1em','padding-right': '1em'}}
+      >
+        <Select 
+          placeholder={currentId} 
+          onChange={changeSelectedId}
+        >
+          {options}
+        </Select>
+      </InputGroup>
+    )
+  }
 
   return (
     <ChakraProvider>
@@ -103,8 +132,8 @@ function App() {
         templateColumns='calc(55vw + 1em) repeat(2,1fr)'
         gap={1}
       >
-        <GridItem rowSpan={1} colSpan={3} bg='green'>
-          {'top'}
+        <GridItem rowSpan={1} colSpan={3} >
+          {makeTopBar()}
         </GridItem>
         <GridItem rowSpan={4} className={'shadow scroll'} colSpan={1}>
           <DicomViewerContainer

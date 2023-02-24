@@ -28,6 +28,11 @@ function notAllZero(array){
     return false
 }
 
+function elementWiseMin(a1,a2){
+    let array = a1.map((v,i) => v === 0? a2[i]: Math.min(v,a2[i]))
+    return array;
+}
+
 export default function SpatialDoseGlyph(props){
 
     const d3Container = useRef(null);
@@ -62,7 +67,7 @@ export default function SpatialDoseGlyph(props){
             // const roiPos = rowNames.indexOf(centerRoi);
             const mainDists = distances[rowNames.indexOf('gtv')];
             const nodeDists = distances[rowNames.indexOf('gtvn')];
-            const dists = notAllZero(mainDists)? mainDists: nodeDists;
+            const dists = elementWiseMin(mainDists,nodeDists);//notAllZero(mainDists)? mainDists: nodeDists;
             const mainRoi = notAllZero(mainDists)? 'gtv': notAllZero(nodeDists)? 'gtvn':'gtvn';
             const proximities = dists.map(toProximity)
             const maxRadius = (Math.min(width,height)/2) - padding;

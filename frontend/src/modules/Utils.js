@@ -326,6 +326,24 @@ export default class Utils {
         return canvas
     }
 
+    static notAllZero(array,thresholdPCT=0.01){
+        if(array === undefined){
+            return false
+        }
+        let nGood = 0;
+        const threshold = (array.length)*thresholdPCT;
+        for(let value of array){
+            //the big value is because I have a bug in the preprocessing and it means it is also missing
+            if(value > 1 & value < 10000000){
+                nGood += 1;
+                if(nGood > threshold){
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     static truncateOrganNames(organ_name){
         let name = organ_name.replace('Lt_','')
                         .replace('Rt_','')

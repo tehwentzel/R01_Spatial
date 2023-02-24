@@ -34,19 +34,6 @@ function valToShape(vals,size,arcType='T'){
 
 
 
-function notAllZero(array){
-    if(array === undefined){
-        return false
-    }
-    for(let value of array){
-        //the big value is because I have a bug in the preprocessing and it means it is also missing
-        if(value > 1 & value < 10000000){
-            return true
-        }
-    }
-    return false
-}
-
 
 export default function ScatterPlotD3(props){
 
@@ -60,6 +47,16 @@ export default function ScatterPlotD3(props){
 
     const skipRois = [];
 
+    const isActive = d => d.patient === brushedPatient;
+    const getColor = d => {
+        if(props.selectedCloudIds.indexOf(parseInt(d.patient)) > -1 | isActive(d)){
+            return d.type === 'gtv'? 'red': 'orange';
+        }
+        return 'grey';
+    }
+    const getOpacity = d => props.selectedCloudIds.indexOf(parseInt(d.patient)) > 0? 1:.75
+    const getStrokeWidth = d => props.selectedCloudIds.indexOf(parseInt(d.patient)) > 0? 1:.5;
+
     function plotPCA(data){
         svg.selectAll().remove();
         console.log('pca',data)
@@ -71,7 +68,6 @@ export default function ScatterPlotD3(props){
                 plot_rois.push(r);
             }
         }
-        console.log('plot',plot_rois,constants.ORGAN_PLOT_ORDER)
         const plotColOrder = colOrder.map(roi => plot_rois.indexOf(roi)).filter(d => d > -1);
         const pids = Object.keys(data.distances);
         const gtvPos = rowOrder.indexOf('gtv');
@@ -88,7 +84,7 @@ export default function ScatterPlotD3(props){
         let gtvPoints = pids.map( a => fix(data.distances[a][gtvPos]));
         let gtvnPoints = pids.map( a => fix(data.distances[a][gtvnPos]));
 
-        const mergedPoints = gtvPoints.concat(gtvnPoints).filter(notAllZero);
+        const mergedPoints = gtvPoints.concat(gtvnPoints).filter(i => Utils.notAllZero(i,.7));
         const distMin = d3.min(mergedPoints.map(a => Math.min(...a)));
         const distMax = d3.max(mergedPoints.map(a => Math.max(...a)));
         const pScale = d3.scalePow(2)
@@ -113,7 +109,7 @@ export default function ScatterPlotD3(props){
             let gtvn = gtvnProjection[i];
             let gtv = gtvProjection[i];
             let link = {'patient':pid}
-            if(notAllZero(gtvPoints[i])){
+            if(Utils.notAllZero(gtvPoints[i])){
                 let prox = gtvPoints[i].map(toProximity)
                 let gtvPoint = {
                     'patient': pid, 
@@ -127,7 +123,7 @@ export default function ScatterPlotD3(props){
                 allPoints.push(gtvPoint);
                 link.source = gtvPoint.id
             }
-            if(notAllZero(gtvnPoints[i])){
+            if(Utils.notAllZero(gtvnPoints[i])){
                 let prox= gtvnPoints[i].map(toProximity)
                 let gtvnPoint = {
                     'patient': pid, 
@@ -167,13 +163,7 @@ export default function ScatterPlotD3(props){
         const getY = d => boundY(d.y);
 
         const transform = d => 'translate(' + getX(d) + ',' + getY(d) + ')';
-        const getColor = d => {
-            if(props.parameters.patientIDs.indexOf(parseInt(d.patient)) > -1){
-                return d.type === 'gtv'? 'red': 'orange';
-            }
-            return 'grey';
-        }
-        const getOpacity = d => d.type === 'gtv'? 1:.8;
+        
         const getRadius = d => radius;//d.type === 'gtv'? 10:6;
 
         const getPath = d => {
@@ -183,11 +173,11 @@ export default function ScatterPlotD3(props){
         let connections = svg.selectAll('path').filter('.link')
             .data(links).enter()
             .append('path').attr('class','.link')
-            .attr('opacity', .3)
+            .attr('opacity',d=>getOpacity)
             .attr('fill','')
             .attr('fill-opacity',0)
             .attr('stroke', 'black')
-            .attr('stroke-width', .8);
+            .attr('stroke-width', d=>getStrokeWidth(d)/2);
 
         var forceLink = d3.forceLink()
             .id(d=>d.id)
@@ -206,8 +196,8 @@ export default function ScatterPlotD3(props){
             .attr('transform',transform)
             .attr('fill',getColor)
             .attr('stroke','black')
-            .attr('stroke-width',1)
-            .attr('fill-opacity',.95)
+            .attr('stroke-width',getStrokeWidth)
+            .attr('fill-opacity',getOpacity)
             .attr('stroke-opacity',1)
             .on('dblclick',function(e,d){
                 if(props.parameters.patientIDs.indexOf(parseInt(d.patient)) > -1){
@@ -237,14 +227,13 @@ export default function ScatterPlotD3(props){
         var simulation = d3.forceSimulation(allPoints)
             // .alphaMin(.001)
             .force('collide',d3.forceCollide().radius(d=>d.maxProximity*getRadius(d)).strength(.1))
-            .force("center", d3.forceCenter().x(width/2).y(height/2).strength(.1))
+            .force("center", d3.forceCenter().x(width/2).y(height/2).strength(.3))
             .force('link',forceLink)
             .on('tick',tick);
 
     }
 
     function plotRadVis(data){
-        console.log('radvis',data);
         // svg.selectAll().remove();
         // console.log('pca',data)
         // const rowOrder = data.rowOrder;
@@ -479,20 +468,16 @@ export default function ScatterPlotD3(props){
 
     useEffect(()=>{
         if(svg === undefined){ return; }
-        const isActive = d => d.patient === brushedPatient;
+        
         if(brushedPatient === null){
             svg.selectAll('path')
-                .style('opacity','');
+                .style('opacity','')
+                .style('fill','');
         }
         else{
             svg.selectAll('path')
-                .style('opacity',d=>isActive(d)? 1:.5);
-
-            // if(getTransform !== null){
-            //     console.log(getTransform)
-            //     svg.selectAll('.gtvPoints')
-            //         .attr('transform', d => isActive(d)? 'scale(3)' + getTransform(d): getTransform(d));
-            // }
+                .style('opacity',d=>isActive(d)? 1:.5)
+                .style('fill',getColor);
         }
     },[svg,brushedPatient])
 

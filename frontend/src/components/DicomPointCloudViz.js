@@ -58,9 +58,6 @@ export default function DicomPointCloudViz(props){
 
     //basically I only read every k points. set to 1 to not downsample
 
-    
-    const skipNoDoseContours = props.skipNoDoseContours !== undefined? props.skipNoDoseContours: true;
-
     // const [nodeSize,setNodeSize] = useState(15);
     // const nodeColor = new THREE.Color().setHex(0xa0a0a0);
     // const getCenter = v => (v[1] + v[0])/2;
@@ -85,26 +82,22 @@ export default function DicomPointCloudViz(props){
         const pointClouds = data['contour_pointclouds'];
         const outsideContours = data['contours'];
         const pointSize = downsampleK*width/200;
-        console.log('ointsize',pointSize);
         const correctPoint = (p) => [0,1,2].map(i => p[i] - props.centroid[i]);
         var pointPositions = {};
         var pointValues = {}; 
         var contourPositions = {};
         const pId = data['patient_id'];
-        for(const [roi,pointList] of Object.entries(outsideContours)){
+        for(const [roi,dEntry] of Object.entries(pointClouds)){
+            
             if((roi != props.brushedOrgan) & (skipRois.indexOf(roi) > -1)){continue}
-            let dEntry = pointClouds[roi];
-            if(skipNoDoseContours & (dEntry === undefined)){continue;}
-            // console.log('contour',pId,roi,pointList.map(d=>d.length));
-            //I'm messing with only plotting set organs or only organs with doses
-
             if(props.plotRois !== undefined){
                 if(props.plotRois.indexOf(roi) < 0){
                     continue
                 }
             } 
 
-            let cPoints = []
+            var pointList = outsideContours[roi];
+            let cPoints = [];
             for(let points of pointList){
                 cPoints.push(...points);
             }
@@ -112,26 +105,22 @@ export default function DicomPointCloudViz(props){
 
             let tempPoints = [];
             let pVals = [];
-            if(dEntry !== undefined){
-                // console.log('dose entry',dEntry['coordinates'].length)
-                //the slice is just so the thing doesn't crash.
-                var coords = dEntry['coordinates'] ;
-                var dvals = dEntry['dose_values'];
-                if(coords !== undefined){
-                    //If I do this all at once it can crash
-                    for(var i in coords){
-                        if(i%downsampleK !== 0){continue}
-                        tempPoints.push(coords[i]);
-                        pVals.push(dvals[i]);
-                        if(i/downsampleK > 10000){
-                            break;
-                        }
+            //the slice is just so the thing doesn't crash.
+            var coords = dEntry['coordinates'] ;
+            var dvals = dEntry['dose_values'];
+            if(coords !== undefined){
+                //If I do this all at once it can crash
+                for(var i in coords){
+                    if(i%downsampleK !== 0){continue}
+                    tempPoints.push(coords[i]);
+                    pVals.push(dvals[i]);
+                    if(i/downsampleK > 10000){
+                        break;
                     }
                 }
             }
             pointPositions[roi] = tempPoints;
             pointValues[roi] = pVals;
-            // console.log("done?")
         }
 
         var verts = [];
@@ -140,7 +129,6 @@ export default function DicomPointCloudViz(props){
         for(const [key, roiPoints] of Object.entries(pointPositions)){
             if(roiPoints === undefined | roiPoints.length < 3){ continue; }
             const roiPointVals = pointValues[key];
-            // console.log('other',pId,key,roiPoints.length)
             for(let i in roiPoints){
                 let coord = correctPoint(roiPoints[i]);
                 let val = roiPointVals[i];
