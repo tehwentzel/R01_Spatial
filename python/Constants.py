@@ -12,55 +12,16 @@ class Const():
     small_dist_json = '../data/r01_distances_small.json'
     full_dist_json = '../data/r01_distances.json'
     
-    old_organ_list = [
-        'Esophagus',#
-         'Spinal_Cord',#
-         'Lt_Brachial_Plexus',
-         'Rt_Brachial_Plexus',
-         'Cricopharyngeal_Muscle',#
-#          'Lt_thyroid_lobe',
-#          'Rt_thyroid_lobe',
-         'Cricoid_cartilage',#
-         'IPC',#
-         'MPC',#
-         'Brainstem',#
-         'Larynx',#
-         'Thyroid_cartilage',#
-         'Rt_Sternocleidomastoid_M',
-         'Rt_Mastoid',
-         'Rt_Parotid_Gland',
-         'Rt_Medial_Pterygoid_M',
-         'Rt_Lateral_Pterygoid_M',
-         'Rt_Masseter_M',
-         'Lt_Sternocleidomastoid_M',
-         'Lt_Mastoid',
-         'Lt_Parotid_Gland',
-         'Lt_Submandibular_Gland',
-         'Lt_Medial_Pterygoid_M',
-         'Lt_Lateral_Pterygoid_M',
-         'Lt_Masseter_M',
-         'Supraglottic_Larynx',#
-         'SPC',#
-         'Rt_Submandibular_Gland',
-         'Hyoid_bone',#
-         'Soft_Palate',#
-         'Genioglossus_M',#
-         'Tongue',#
-         'Rt_Ant_Digastric_M',
-         'Lt_Ant_Digastric_M',
-         'Mylogeniohyoid_M',#
-         'Extended_Oral_Cavity',#
-         'Mandible',#
-         'Hard_Palate',
-#          'Lt_Posterior_Seg_Eyeball',
-#          'Rt_Posterior_Seg_Eyeball',
-#          'Lt_Anterior_Seg_Eyeball',
-#          'Rt_Anterior_Seg_Eyeball',
-         'Lower_Lip',
-         'Upper_Lip',
-         'Glottic_Area',
-                 ]
+    processed_mdasi = '../data/dicom_mdasi.json'
     
+    symptoms = ["pain", "fatigue", "nausea", "sleep", 
+                "distress", "sob", "memory", "appetite", 
+                "drowsy", "drymouth", "sad", "vomit", "numb", 
+                "mucus", "swallow", "choke", "voice", "skin", 
+                "constipation", "taste", "mucositis", "teeth", 
+                "activity", "mood", "work", "relations", "walking",
+                "enjoy"]
+   
     organ_list = [
         'hyoid',
         'mandible',
@@ -127,7 +88,6 @@ class Const():
          'musc_thyrohyoid': 'hyoid',
          'fssubmandib_l_sub': 'glnd_submand_l',
          'spinalcord_05': 'spinal_cord',
-#          'fs push parotids': 'parotid_r',
          'fsmandibleav70': 'mandible',
          'fsmandibleav70 2': 'mandible',
          'lt_thyroid_lobe': 'thyroid',
@@ -176,7 +136,6 @@ class Const():
          'resd_parotid_l_ap': 'parotid_l',
          'resd_larynx_ap': 'larynx',
          'resd_glnd_submand_r_ap': 'glnd_submand_r',
-#          'fs parotid push': 'parotid_r',
          'fslarynxavoid': 'larynx',
          'resd_thyroid_ap': 'thyroid',
          'fsrparotidavoid': 'parotid_r',
@@ -192,7 +151,6 @@ class Const():
          'fshyoidhot': 'hyoid',
          'spinalcord_en_ap': 'spinal_cord',
          'spinalcord_prv5_en_ap': 'spinal_cord',
-#          'fs parotid tails': 'parotid_r',
          'spinal_cord_prv5': 'spinal_cord',
          'pbrainstem cw': 'brainstem',
          'spinalcord_03': 'spinal_cord',
@@ -205,25 +163,19 @@ class Const():
          'fs parotid r push top': 'parotid_r',
          'fs parotid l push bottom': 'parotid_l',
          'fsparotid_l_sub2': 'parotid_r',
-#          'spinal canal': 'spinal',
          'fs rt parotid push': 'parotid_r',
-#          'fs parotid tail': 'parotid_r',
          'fs mandibleavoid': 'mandible',
          'spinal cord_prv5': 'spinal_cord',
          'r lacrimal gland': 'lacrimal_r',
          'l lacrimal gland': 'lacrimal_l',
-#          'r and l parotids combined': 'parotid_r',
          'fsr parotid push': 'parotid_r',
          'fsl parotid push': 'parotid_l',
-#          'fsmax parotid': 'parotid_r',
          'fslarynxavoid2': 'larynx',
          'larynxpush': 'larynx',
-#          'fs smga': 'smg',
          'resd_parotid_l_ap_0_ap': 'parotid_l',
          'rt parotid push': 'parotid_r',
          'fs esophagus avoid': 'esophagus',
          'fslarynxavoid5mm': 'larynx',
-#          'fssmgavoid': 'smg',
          'spinal cord expanded 5mm': 'spinal_cord',
          'rt parotid tail': 'parotid_r',
          'fsrt parotid push': 'parotid_r',
@@ -257,7 +209,6 @@ class Const():
         'fscoollpar': 'parotid_l',
          'fslsmgavoid': 'glnd_submand_l',
          'ltparotidpush': 'parotid_l',
-#          'parotid avoid': 'parotid_r',
          'resd_larynx avoid_ap_0_ap': 'larynx',
          'resd_esophagus_ap_0_ap': 'esophagus',
          'resd_glnd_submand_r_ap_0_ap': 'glnd_submand_r',
@@ -275,20 +226,15 @@ class Const():
          'zl submand push': 'glnd_submand_l',
          'resd_esophagus_ap': 'esophagus',
          'partial esophagus': 'esophagus',
-#          'smg avoid': 'smg',
          'fs r parotid eud': 'parotid_r',
          'fslt smg push': 'glnd_submand_l',
-#          'fsparotid': 'parotid_r',
          'fs_larynx sub': 'larynx',
-#          'fsoptirparotid': 'parotid_r',
          'parotid_r_sub': 'parotid_r',
-#          'fs parotids avoid': 'parotid_r',
          'thyroid1': 'thyroid',
          'brainstem_5mm': 'brainstem',
          'fsrparotidhi': 'parotid_r',
          'fslparotidhi': 'parotid_l',
          'push r parotid': 'parotid_r',
-#          'fspush parotids': 'parotid_r',
          'brainstem_old': 'brainstem',
          'spinalcord_old': 'spinal_cord',
          'parotid_r_old': 'parotid_r',
@@ -308,7 +254,6 @@ class Const():
          'fsrtparotidavoid': 'parotid_r',
          'parotid r sub': 'parotid_r',
          'parotid l  sub': 'parotid_l',
-#          'fsparotid tail': 'parotid_r',
          'resd_fsparotid_l_sub_ap_2_ap': 'parotid_l',
          'resd_larynx_ap_2_ap': 'larynx',
          'resd_esophagus_ap_2_ap': 'esophagus',
@@ -556,8 +501,11 @@ class Const():
         'lt_posterior_scalenes_m': 'post_scalene_l',
         'rt_posterior_scalenes_m': 'post_scalene_r',
         'musc_scalene_ra': 'ant_scalene_r',
-        'musc_scalene_la': 'ant_scalene_l'
+        'musc_scalene_la': 'ant_scalene_l',
+        'lt_posterior_seg_eyeball': 'eye_l',
+        'rt_posterior_seg_eyeball': 'eye_r',
         }
+    
 #     organ_associations = {
 #     'bone_hyoid': 'hyoid',
 #     'hyoid_bone': 'hyoid',
