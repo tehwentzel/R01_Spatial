@@ -37,164 +37,86 @@ export default function DicomPointCloudViz(props){
     const [controls, setControls] = useState();
     const [tTip, setTTip] = useState();
 
-    const pointSize = 10;
-    const cameraDist=500;
+    const downsampleK = props.downsampleK !== undefined? props.downsampleK: 1;
+    
+    const [cameraDist,setCameraDist] = useState(500);
     const mouseVector = new THREE.Vector2(-500, -500);
     const mouse = new THREE.Vector2(-500,500);
     const cameraSyncInterval = 50;
     const sceneScale = 2.5;
 
-    const skipRois = ['ctv','ptv','spinal_cord','oral_cavity'];
+    const skipRois = props.skipRois? props.skipRois: [
+    'ctv','ptv','spinal_cord','oral_cavity',
+    'brachial_plex_l','brachial_plex_r', 
+    'medial_pterygoid_l','medial_pterygoid_r','lateral_pterygoid_l','lateral_pterygoid_r', 
+    'post_scalene_l','post_scalene_r',
+    'ant_scalene_l','ant_scalene_r',
+    'buccinator_r','buccinator_l',
+    ];
     const brushedOpacity = 1;
     const unbrushedOpacity = .25;
 
-    const nodeSize = 15;
-    const nodeColor = new THREE.Color().setHex(0xa0a0a0);
-    
-    const getCenter = v => (v[1] + v[0])/2;
-    function makeCentroid(roi, roiPoints){
-        let centroid = [0,1,2].map(i => 2*Utils.midpoint(roiPoints.map(d=>d[i])));
-        centroid = new THREE.Vector3(...centroid);
-        var material = new THREE.MeshBasicMaterial({color:nodeColor,opacity:.5,transparent:true});
-        var geo = new THREE.SphereGeometry(nodeSize,16);
+    //basically I only read every k points. set to 1 to not downsample
+
+    // const [nodeSize,setNodeSize] = useState(15);
+    // const nodeColor = new THREE.Color().setHex(0xa0a0a0);
+    // const getCenter = v => (v[1] + v[0])/2;
+    // function makeCentroid(roi, roiPoints){
+    //     let centroid = [0,1,2].map(i => 2*Utils.midpoint(roiPoints.map(d=>d[i])));
+    //     centroid = new THREE.Vector3(...centroid);
+    //     var material = new THREE.MeshBasicMaterial({color:nodeColor,opacity:.5,transparent:true});
+    //     var geo = new THREE.SphereGeometry(nodeSize,16);
         
-        let organSphere = new THREE.Mesh(geo,material);
-        // organSphere.position.set(centroid);
-        organSphere.position.x = centroid.x;
-        organSphere.position.y= centroid.y;
-        organSphere.position.z = centroid.z;
-        organSphere.userData.type = 'organNode';
-        organSphere.userData.organName = roi;
-        return organSphere;
-    }
-
-    // function getPointGeom(data){
-    //     // if(!Utils.validData(data)){return false}
-    //     const pointClouds = data['contour_pointclouds'];
-    //     const outsideContours = data['contours']
-    //     const correctPoint = (p) => [0,1,2].map(i => p[i] - props.centroid[i]);
-    //     var pointPositions = {};
-    //     var pointValues = {}; 
-    //     const pId = data['patient_id'];
-    //     for(const [roi,pointList] of Object.entries(outsideContours)){
-    //         if((roi != props.brushedOrgan) & (skipRois.indexOf(roi) > -1)){continue}
-    //         //I'm messing with only plotting set organs or only organs with doses
-    //         //booton is onl with doses
-    //         // if(props.plotRois !== undefined){
-    //         //     if(props.plotRois.indexOf(roi) < 0){
-    //         //         continue
-    //         //     }
-    //         // } 
-    //         let dEntry = pointClouds[roi];
-    //         if(dEntry === undefined){
-    //             continue;
-    //         }
-    //         let tempPoints = [];
-    //         for(let points of pointList){
-    //             tempPoints.push(...points);
-    //         }
-    //         let pVals = tempPoints.map(d=>0);
-    //         if(dEntry['coordinates'] !== undefined){
-    //             tempPoints.push(...dEntry['coordinates']);
-    //             pVals.push(...dEntry['dose_values']);
-    //         }
-    //         pointPositions[roi] = tempPoints;
-    //         pointValues[roi] = pVals;
-    //     }
-
-    //     var verts = [];
-    //     var rois = [];
-    //     var vals = [];
-    //     var centroids = [];
-    //     for(const [key, roiPoints] of Object.entries(pointPositions)){
-    //         // if(!key.includes('sterno')){continue}
-    //         if(roiPoints === undefined | roiPoints.length < 3){ continue; }
-    //         const centroidMesh = makeCentroid(key,roiPoints);
-    //         centroids.push(centroidMesh);
-    //         const roiPointVals = pointValues[key];
-    //         for(let i in roiPoints){
-    //             let coord = correctPoint(roiPoints[i]);
-    //             let val = roiPointVals[i];
-    //             if(coord.length == 3){
-    //                 verts.push(...coord);
-    //                 rois.push(key);
-    //                 vals.push(val);
-    //             }else{
-    //                 console.log('bad',coord)
-    //             }
-    //         }
-    //     }
-    //     let colorScale = d3.scaleLinear()
-    //         .domain([0,d3.max(vals)])
-    //         .range([0,1]);
-    //     let colors = [];
-    //     for(let i in vals){
-    //         let val = vals[i];
-    //         let roi = rois[i];
-    //         let interp = Utils.getRoiInterpolator(roi);
-    //         let c = interp(colorScale(val));
-    //         c  = d3.color(c);
-    //         let alpha = ((roi === props.brushedOrgan) | roi.includes('gtv'))? brushedOpacity:unbrushedOpacity;
-    //         if(val <= 0 & !roi.includes('gtv')){
-    //             alpha = alpha/3;
-    //         }
-    //         c = [c.r/255, c.g/255, c.b/255, alpha];
-    //         colors.push(...c);
-    //     }
-
-    //     verts = new THREE.BufferAttribute(new Float32Array(verts),3);
-    //     colors = new THREE.BufferAttribute(new Float32Array(colors),4);
-    //     verts.name = 'pointCloudVertices';
-    //     colors.name = 'pointCloudColors';
-    //     var geometry = new THREE.BufferGeometry();
-    //     geometry.setAttribute( 'position', verts);
-    //     geometry.setAttribute( 'color', colors);
-    //     var material = new THREE.PointsMaterial({
-    //         vertexColors: true,
-    //         size: 3,
-    //         depthTest: false,
-    //         sizeAttenuation: true, 
-    //         transparent:true});
-    //     var pointCloud = new THREE.Points(geometry,material);
-    //     pointCloud.userData.type = 'pointcloud';
-    //     // for(let centroidMesh of centroids){
-    //     //     pointCloud.add(centroidMesh);
-    //     // }
-    //     return [pointCloud];
-
+    //     let organSphere = new THREE.Mesh(geo,material);
+    //     // organSphere.position.set(centroid);
+    //     organSphere.position.x = centroid.x;
+    //     organSphere.position.y= centroid.y;
+    //     organSphere.position.z = centroid.z;
+    //     organSphere.userData.type = 'organNode';
+    //     organSphere.userData.organName = roi;
+    //     return organSphere;
     // }
+ 
     function getPointGeom(data){
         if(!Utils.validData(data)){return []}
         const pointClouds = data['contour_pointclouds'];
         const outsideContours = data['contours'];
-        
+        const pointSize = downsampleK*width/200;
         const correctPoint = (p) => [0,1,2].map(i => p[i] - props.centroid[i]);
         var pointPositions = {};
         var pointValues = {}; 
         var contourPositions = {};
         const pId = data['patient_id'];
-        for(const [roi,pointList] of Object.entries(outsideContours)){
+        for(const [roi,dEntry] of Object.entries(pointClouds)){
+            
             if((roi != props.brushedOrgan) & (skipRois.indexOf(roi) > -1)){continue}
-            //I'm messing with only plotting set organs or only organs with doses
-            //booton is onl with doses
             if(props.plotRois !== undefined){
                 if(props.plotRois.indexOf(roi) < 0){
                     continue
                 }
             } 
-            let cPoints = []
+
+            var pointList = outsideContours[roi];
+            let cPoints = [];
             for(let points of pointList){
                 cPoints.push(...points);
             }
             contourPositions[roi] = cPoints;
 
-            let dEntry = pointClouds[roi];
             let tempPoints = [];
             let pVals = [];
-            if(dEntry !== undefined){
-                if(dEntry['coordinates'] !== undefined){
-                    tempPoints.push(...dEntry['coordinates']);
-                    pVals.push(...dEntry['dose_values']);
+            //the slice is just so the thing doesn't crash.
+            var coords = dEntry['coordinates'] ;
+            var dvals = dEntry['dose_values'];
+            if(coords !== undefined){
+                //If I do this all at once it can crash
+                for(var i in coords){
+                    if(i%downsampleK !== 0){continue}
+                    tempPoints.push(coords[i]);
+                    pVals.push(dvals[i]);
+                    if(i/downsampleK > 10000){
+                        break;
+                    }
                 }
             }
             pointPositions[roi] = tempPoints;
@@ -205,10 +127,8 @@ export default function DicomPointCloudViz(props){
         var rois = [];
         var vals = [];
         for(const [key, roiPoints] of Object.entries(pointPositions)){
-            // if(!key.includes('sterno')){continue}
             if(roiPoints === undefined | roiPoints.length < 3){ continue; }
             const roiPointVals = pointValues[key];
-
             for(let i in roiPoints){
                 let coord = correctPoint(roiPoints[i]);
                 let val = roiPointVals[i];
@@ -249,7 +169,7 @@ export default function DicomPointCloudViz(props){
         geometry.setAttribute( 'color', colors);
         var material = new THREE.PointsMaterial({
             vertexColors: true,
-            size: 3,
+            size: pointSize,
             depthTest: false,
             depthWrite: false,
             sizeAttenuation: true, 
@@ -268,14 +188,15 @@ export default function DicomPointCloudViz(props){
                 }
             }
         }
+    
         contourVerts = new THREE.BufferAttribute(new Float32Array(contourVerts),3);
         var contourGeo = new THREE.BufferGeometry();
         contourGeo.setAttribute('position',contourVerts);
         var cMaterial = new THREE.PointsMaterial({
             vertexColors: true,
             color: 'white',
-            opacity: .01,
-            size: 3,
+            opacity: 0.1,
+            size: pointSize/(1.5*downsampleK),
             depthTest: false,
             sizeAttenuation: true, 
             transparent:true

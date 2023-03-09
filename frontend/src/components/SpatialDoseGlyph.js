@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
-// import * as constants from "../modules/Constants.js";
+import * as constants from "../modules/Constants.js";
 import useSVGCanvas from './useSVGCanvas.js';
 import Utils from '../modules/Utils.js';
 import * as d3 from 'd3';
@@ -28,6 +28,11 @@ function notAllZero(array){
     return false
 }
 
+function elementWiseMin(a1,a2){
+    let array = a1.map((v,i) => v === 0? a2[i]: Math.min(v,a2[i]))
+    return array;
+}
+
 export default function SpatialDoseGlyph(props){
 
     const d3Container = useRef(null);
@@ -40,7 +45,10 @@ export default function SpatialDoseGlyph(props){
         if(d === 0 | d >= 10000000){
             return 0;
         }
-        return 1/1+d;
+        if(d > 0){
+            return 1/(1+d);
+        }
+        return 1;
     }
 
     useEffect(()=>{
@@ -59,25 +67,31 @@ export default function SpatialDoseGlyph(props){
             // const roiPos = rowNames.indexOf(centerRoi);
             const mainDists = distances[rowNames.indexOf('gtv')];
             const nodeDists = distances[rowNames.indexOf('gtvn')];
-            const dists = notAllZero(mainDists)? mainDists: nodeDists;
+            const dists = elementWiseMin(mainDists,nodeDists);//notAllZero(mainDists)? mainDists: nodeDists;
             const mainRoi = notAllZero(mainDists)? 'gtv': notAllZero(nodeDists)? 'gtvn':'gtvn';
             const proximities = dists.map(toProximity)
             const maxRadius = (Math.min(width,height)/2) - padding;
             const innerRadius =  5;
             const minRadius = 20;
 
-
             let entries = [];
-            let arcLen = 2*Math.PI/colNames.length;
-            let currRadialPos = 0;
             for(let i in colNames){
                 let entry = {
                     'roi': colNames[i],
                     'dist': dists[i],
                     'proximity': proximities[i],
-                    'radialStart': currRadialPos,
+                    'sortOrder': constants.ORGAN_PLOT_ORDER.indexOf(colNames[i]),
                 }
-                entries.push(entry)
+                entries.push(entry);
+            }
+            entries.sort( (a,b) => a.sortOrder - b.sortOrder);
+
+            let arcLen = 2*Math.PI/colNames.length;
+            let currRadialPos = 0;
+            for(let i in entries){
+                let e = entries[i];
+                e.radialStart = currRadialPos;
+                entries[i] = e;
                 currRadialPos += arcLen;
             }
 
@@ -124,7 +138,7 @@ export default function SpatialDoseGlyph(props){
                         props.setBrushedOrgan(roi);
                     }
                 }).on('mouseover',function(e,d){
-                    tTip.html(d.roi + '</br> dist: ' + d.dist.toFixed(1));
+                    tTip.html(d.roi + '</br> dist: ' + d.dist.toFixed(1) + '</br> prox: ' + d.proximity.toFixed(1));
                 }).on('mousemove', function(e){
                     Utils.moveTTipEvent(tTip,e);
                 }).on('mouseout', function(e){

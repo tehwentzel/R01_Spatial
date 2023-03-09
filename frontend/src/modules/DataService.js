@@ -44,13 +44,23 @@ export default class DataService {
         
     }
 
+    async getMdasiData(){
+        try{
+            const response = await this.api.get('/mdasi')
+            return response.data
+        } catch(error){
+            console.log('error in getMdasiData:')
+            console.log(error)
+        }
+    }
+
     async getPatientDistances(patientIds){
         //will evantually make this a single file
         try{
             const response = await this.api.get('/distances')
             return response.data
         } catch(error){
-            console.log('error in getpatientclouds');
+            console.log('error in getpatientclouds:');
             console.log(error)
         }
     }

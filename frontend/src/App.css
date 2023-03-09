@@ -21,6 +21,14 @@
   font-size: .7em!important;		
 }
 
+.chakra-select, option{
+  /* width: !important; */
+  height: auto!important;
+  font-size: 1em!important;
+  /* padding: .1em!important;
+  margin: .5em!important; */
+}
+
 .d3-component{
   height: 100%!important;
   width: 100%!important;
@@ -85,6 +93,6 @@
 }
 
 .autoSize{
-  height: auto;
-  width: auto;
+  height: auto!important;
+  width: auto!important;
 }

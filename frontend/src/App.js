@@ -4,7 +4,7 @@ import React, {useEffect, useState} from 'react';
 import './App.css';
 
 // 1. import `ChakraProvider` component
-import { ChakraProvider,Grid,GridItem } from '@chakra-ui/react';
+import { ChakraProvider,Grid,GridItem, Select,Box ,InputGroup} from '@chakra-ui/react';
 
 import DataService from './modules/DataService';
 import Utils from './modules/Utils';
@@ -23,9 +23,10 @@ function App() {
 
   const [patientClouds, setPatientClouds] = useState(null);
   const [patientDicoms, setPatientDicoms] = useState(null);
+  const [mdasiData, setMdasiData] = useState(null)
 
   const [selectedCloudIds, setSelectedCloudIds] = useState([
-    4663235737
+    2411034155
   ]);
 
   //as of writting this is {'distances': NxO array of gtv -> organ distanes, 'patients': list of patient ids in the order of the array, roiOrder: list of rois in the order of the array}
@@ -37,15 +38,11 @@ function App() {
     setParameters(params);
   }
 
-  // const fetchPatientRecords = async(patientIds, fields,setFunction) => {
-  //   //meant to fetch a generic set of patient stuff so I can reuse this for different kinds of fields
-  //   //set function is a state updator like setPatientData
-  //   //sort of outdated now
-  //   const pData = await api.getPatientData(patientIds,fields);
-  //   // console.log('got patient data',patientIds,fields);
-  //   console.log(pData);
-  //   setFunction(pData);
-  // }
+  const fetchMdasi = async () => {
+    const mdasi = await api.getMdasiData();
+    console.log('got mdasi',mdasi);
+    setMdasiData(mdasi);
+  }
 
   const fetchPatientClouds = async(patientIds) => {
     var loadedPatients = patientClouds === null? []:patientClouds.filter(d=> patientIds.indexOf(parseInt(d.patient_id)) > -1);
@@ -59,7 +56,7 @@ function App() {
         pData.push(pc);
       }
       setPatientClouds(pData);
-      console.log('patient clouds');
+      console.log('patient clouds',pData);
     } else{
       setPatientClouds(loadedPatients)
     }
@@ -89,9 +86,42 @@ function App() {
   },[])
 
   useEffect(() => {
+    fetchMdasi();
+  },[])
+
+  useEffect(() => {
     fetchPatientClouds(selectedCloudIds);
   },[selectedCloudIds]);
 
+  function makeTopBar(){
+    if(parameters.patientIDs === undefined | selectedCloudIds === null | selectedCloudIds === undefined){
+      return (<p>{'top'}</p>)
+    }
+
+    const changeSelectedId = (e) =>{
+      let value = e.target.value;
+      setSelectedCloudIds([parseInt(value)])
+    }
+    var currentId = selectedCloudIds[0];
+    var options = parameters.patientIDs.map(d => {
+      return (
+        <option value={d}>{d}</option>
+      )
+    });
+    return (
+      <InputGroup w='100%' h='100%' 
+      className={'shadow'} 
+      style={{'padding-left': '1em','padding-right': '1em'}}
+      >
+        <Select 
+          placeholder={currentId} 
+          onChange={changeSelectedId}
+        >
+          {options}
+        </Select>
+      </InputGroup>
+    )
+  }
 
   return (
     <ChakraProvider>
@@ -102,8 +132,8 @@ function App() {
         templateColumns='calc(55vw + 1em) repeat(2,1fr)'
         gap={1}
       >
-        <GridItem rowSpan={1} colSpan={3} bg='green'>
-          {'top'}
+        <GridItem rowSpan={1} colSpan={3} >
+          {makeTopBar()}
         </GridItem>
         <GridItem rowSpan={4} className={'shadow scroll'} colSpan={1}>
           <DicomViewerContainer
@@ -112,6 +142,7 @@ function App() {
             patientDicoms={patientDicoms}
             parameters={parameters}
             distanceData={patientDistanceData}
+            mdasiData={mdasiData}
           >
           </DicomViewerContainer>
         </GridItem>
@@ -121,6 +152,7 @@ function App() {
             parameters={parameters}
             selectedCloudIds={selectedCloudIds}
             setSelectedCloudIds={setSelectedCloudIds}
+            mdasiData={mdasiData}
           />
         </GridItem>
         {/* <GridItem rowSpan={1} colSpan={2} className={'shadow'}>

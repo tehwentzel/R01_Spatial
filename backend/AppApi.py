@@ -84,6 +84,12 @@ def load_dicom_data():
         patient_list = pickle.load(f)
     return patient_list
 
+def load_mdasi_data():
+    file = '../data/dicom_mdasi.json'
+    with open(file,'r') as f:
+        data = simplejson.load(f)
+    return data
+
 def get_all_pids():
     files = glob.glob(DICOM_DIR + 'pclouds_*.json')
     pids = []
@@ -100,6 +106,7 @@ def get_patient_pcloud(pid):
         file = DICOM_DIR + 'pclouds_' + str(int(pid)) + '.json'
         with open(file,'r') as f:
             pcloud = simplejson.load(f)
+        pcloud['contours'] = {k: pcloud['contours'][k] for k in pcloud['contour_pointclouds'].keys()}
         return pcloud
     except:
         return

@@ -1,5 +1,6 @@
 import * as constants from './Constants';
 import * as d3 from 'd3';
+import PCA from './PCA.js';
 
 export default class Utils {
 
@@ -21,6 +22,33 @@ export default class Utils {
         else{
           return d3.interpolateOranges;
         }
+    }
+
+    static radToCartesian(angle,scale=1){
+        angle = angle
+        let x = Math.cos(angle)*scale;
+        let y = Math.sin(angle)*scale;
+        return [x,y];
+    }
+
+    static ApplyPca2D(array,eigenVectors){
+        let result = PCA.computeAdjustedData(array,eigenVectors[0],eigenVectors[1]);
+        //resut is 2xN -> transpose so its Nx2
+        return PCA.transpose(result.formattedAdjustedData);
+    }
+    
+    static circlePath(r){
+        //draw a circle for an svg path with radius R, centered on 0,0
+        let path = 'M ' + (-r) + ', 0 '
+            + 'a ' + r + ',' + r + ' 0 1,0 ' + (2*r) + ',0 '
+            + 'a ' + r + ',' + r + ' 0 1,0 ' + (-2*r) + ',0';
+        return path;
+    }
+    
+    static Pca2D(array){
+      //helper function to do pca for proejction on an array of arrays shape NxD -> Nx2
+      let eVectors = PCA.getEigenVectors(array);
+      return this.ApplyPca2D(array,eVectors);
     }
     
     static getVarDisplayName(varName){
@@ -296,6 +324,24 @@ export default class Utils {
             .attr('height',height).attr('width',width)
             .style('background','white');
         return canvas
+    }
+
+    static notAllZero(array,thresholdPCT=0.01){
+        if(array === undefined){
+            return false
+        }
+        let nGood = 0;
+        const threshold = (array.length)*thresholdPCT;
+        for(let value of array){
+            //the big value is because I have a bug in the preprocessing and it means it is also missing
+            if(value > 1 & value < 10000000){
+                nGood += 1;
+                if(nGood > threshold){
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     static truncateOrganNames(organ_name){
