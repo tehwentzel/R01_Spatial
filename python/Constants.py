@@ -6,7 +6,7 @@ class Const():
     
     dicom_dir = data_dir + 'DICOMS/'
     unprocessed_dicoms = dicom_dir + 'R01/'
-    dicom_test_dir = data_dir + '/SMART/'
+    dicom_test_dir = data_dir + 'SMART/'
     
     pointcloud_dir = dicom_dir + 'ProcessedPatients/'
     small_dist_json = '../data/r01_distances_small.json'
@@ -65,6 +65,8 @@ class Const():
     ]
 
     gtv_names = ['gtv','gtvn','ptv','ctv']
+    
+    bad_ids =[1265845118,1269213210,2815583275,2989874876,3225956079,4443664553,4509480776,9156619185,9920271364,1344996406,1362035218,1401915784,1406457912,1573361627,1931216474,2002304413,2056532905,2304398819,2394091614,2530084611,2692140912,3045110595,3235750820,3316448321,4017119917,2037015898,2111490509,2749596965,2929571068,1306278550,1337145443,2983776095,3035721150,3045918834,9878102359 ]
     
     organ_associations = {
          'glnd_thyroid_l': 'thyroid',
