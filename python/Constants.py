@@ -4,7 +4,7 @@ class Const():
     data_dir = "../data/" #private data
     resource_dir = "../resources/" #public data (can be on github)
     
-    dicom_dir = data_dir + 'DICOMS/'
+    dicom_dir = data_dir + 'DICOM/'
     unprocessed_dicoms = dicom_dir + 'R01/'
     dicom_test_dir = data_dir + 'SMART/'
     
@@ -507,7 +507,7 @@ class Const():
         'lt_posterior_seg_eyeball': 'eye_l',
         'rt_posterior_seg_eyeball': 'eye_r',
         }
-    
+
 #     organ_associations = {
 #     'bone_hyoid': 'hyoid',
 #     'hyoid_bone': 'hyoid',

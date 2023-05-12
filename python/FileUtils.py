@@ -113,7 +113,7 @@ def get_element(ds,string,default=False):
         return ds.data_element(string).value
     except:
         return default
-    
+
 def fix_roi_name(roi):
     roi = roi.lower()
     if roi not in Const.organ_associations:
@@ -194,7 +194,7 @@ def load_pcloud(pid):
     except Exception as e:
         print(e)
         return False
-    
+
 def save_individual_patient(pdict,folder=None):
     folder = Const.pointcloud_dir if folder is None else folder
     fname = folder + 'pclouds_' + str(pdict['patient_id'])
