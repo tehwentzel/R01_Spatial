@@ -20,7 +20,7 @@ export default class Utils {
             return d3.interpolateBlues;
         }
         else{
-          return d3.interpolateOranges;
+          return d3.interpolateGreens;
         }
     }
 

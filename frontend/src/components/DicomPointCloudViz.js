@@ -46,7 +46,9 @@ export default function DicomPointCloudViz(props){
     const sceneScale = 2.5;
 
     const skipRois = props.skipRois? props.skipRois: [
-    'ctv','ptv','spinal_cord','oral_cavity',
+    // 'ctv',
+    'ptv',
+    'spinal_cord','oral_cavity',
     'brachial_plex_l','brachial_plex_r', 
     'medial_pterygoid_l','medial_pterygoid_r','lateral_pterygoid_l','lateral_pterygoid_r', 
     'post_scalene_l','post_scalene_r',
@@ -54,8 +56,18 @@ export default function DicomPointCloudViz(props){
     'buccinator_r','buccinator_l',
     ];
     const brushedOpacity = 1;
-    const unbrushedOpacity = .25;
+    const unbrushedOpacity = .1;
 
+    function getAlpha(roi){
+        let alpha = (roi === props.brushedOrgan)? brushedOpacity:unbrushedOpacity;
+        if(roi.includes('gtv')){
+            alpha *= 2;
+        }
+        if(roi === 'ptv' | roi === 'ctv'){
+            alpha = .2;
+        }
+        return Math.min(alpha,1);
+    }
     //basically I only read every k points. set to 1 to not downsample
 
     // const [nodeSize,setNodeSize] = useState(15);
@@ -81,7 +93,7 @@ export default function DicomPointCloudViz(props){
         if(!Utils.validData(data)){return []}
         const pointClouds = data['contour_pointclouds'];
         const outsideContours = data['contours'];
-        const pointSize = downsampleK*width/200;
+        const pointSize = downsampleK*width/100;
         const correctPoint = (p) => [0,1,2].map(i => p[i] - props.centroid[i]);
         var pointPositions = {};
         var pointValues = {}; 
@@ -152,10 +164,7 @@ export default function DicomPointCloudViz(props){
             let interp = Utils.getRoiInterpolator(roi);
             let c = interp(colorScale(val));
             c  = d3.color(c);
-            let alpha = ((roi === props.brushedOrgan) | roi.includes('gtv'))? brushedOpacity:unbrushedOpacity;
-            if(val <= 0 & !roi.includes('gtv')){
-                alpha = alpha/3;
-            }
+            let alpha = getAlpha(roi)/2;
             c = [c.r/255, c.g/255, c.b/255, alpha];
             colors.push(...c);
         }
@@ -179,23 +188,26 @@ export default function DicomPointCloudViz(props){
 
         var contourVerts = [];
         var contourRois = [];
+        var contourColors = [];
         for(const [key, contourPoints] of Object.entries(contourPositions)){
             for(let i in contourPoints){
                 let coord = correctPoint(contourPoints[i]);
                 if(coord.length === 3){
                     contourVerts.push(...coord);
                     contourRois.push(key);
+                    let alpha = getAlpha(key)/2;
+                    contourColors.push([1.0,1.0,1.0,alpha]);
                 }
             }
         }
     
         contourVerts = new THREE.BufferAttribute(new Float32Array(contourVerts),3);
+        contourColors = new THREE.BufferAttribute(new Float32Array(contourColors),4);
         var contourGeo = new THREE.BufferGeometry();
         contourGeo.setAttribute('position',contourVerts);
+        contourGeo.setAttribute('color',contourColors);
         var cMaterial = new THREE.PointsMaterial({
             vertexColors: true,
-            color: 'white',
-            opacity: 0.1,
             size: pointSize/(1.5*downsampleK),
             depthTest: false,
             sizeAttenuation: true, 
